@@ -170,6 +170,16 @@ a{color:inherit}
 .card p{color:var(--stone);font-size:16px;flex:1}
 .card .btn{align-self:flex-start;margin-top:6px;padding:11px 18px;font-size:11.5px}
 
+/* ---------- solution rows (stacked) ---------- */
+.sol-rows{display:flex;flex-direction:column;gap:16px;margin-top:52px}
+.sol-row{display:flex;align-items:stretch;gap:16px}
+.sol-row__art{flex:0 0 15%;background:var(--deep);border-radius:14px;display:grid;place-items:center;min-height:140px}
+.sol-row__art svg{width:36px;height:36px}
+.sol-row__body{flex:1;min-width:0;border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:26px 28px;display:flex;flex-direction:column;gap:10px;justify-content:center}
+.sol-row__body h3{font-size:21px;font-weight:500;line-height:1.24}
+.sol-row__body p{color:var(--stone);font-size:16px}
+.sol-row__body .btn{align-self:flex-start;margin-top:6px;padding:11px 18px;font-size:11.5px}
+
 /* ---------- certification strip ---------- */
 .certs{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);margin-top:44px;border:1px solid var(--line)}
 .cert{background:var(--paper);padding:26px 16px;display:grid;gap:10px;justify-items:center;text-align:center}
@@ -292,4 +302,6 @@ footer{background:var(--ink);color:#A9B9AF}
   .foot{grid-template-columns:1fr}
   .stats .wrap{grid-template-columns:1fr}
   .office{grid-template-columns:1fr;gap:4px}
+  .sol-row{flex-direction:column}
+  .sol-row__art{min-height:64px}
 }
