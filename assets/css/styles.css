@@ -171,14 +171,14 @@ a{color:inherit}
 .card .btn{align-self:flex-start;margin-top:6px;padding:11px 18px;font-size:11.5px}
 
 /* ---------- solution rows (stacked) ---------- */
-.sol-rows{display:flex;flex-direction:column;gap:16px;margin-top:52px}
-.sol-row{display:flex;align-items:stretch;gap:16px}
-.sol-row__art{flex:0 0 15%;background:var(--deep);border-radius:14px;display:grid;place-items:center;min-height:140px}
-.sol-row__art svg{width:36px;height:36px}
-.sol-row__body{flex:1;min-width:0;border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:26px 28px;display:flex;flex-direction:column;gap:10px;justify-content:center}
-.sol-row__body h3{font-size:21px;font-weight:500;line-height:1.24}
-.sol-row__body p{color:var(--stone);font-size:16px}
-.sol-row__body .btn{align-self:flex-start;margin-top:6px;padding:11px 18px;font-size:11.5px}
+.sol-rows{display:flex;flex-direction:column;gap:10px;margin-top:32px}
+.sol-row{display:flex;align-items:stretch;gap:10px}
+.sol-row__art{flex:0 0 15%;background:var(--deep);border-radius:10px;display:grid;place-items:center;min-height:76px}
+.sol-row__art svg{width:24px;height:24px}
+.sol-row__body{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:14px 20px;display:flex;flex-direction:column;gap:3px;justify-content:center}
+.sol-row__body h3{font-size:16px;font-weight:500;line-height:1.24}
+.sol-row__body p{color:var(--stone);font-size:13.5px;line-height:1.4}
+.sol-row__body .btn{align-self:flex-start;margin-top:6px;padding:8px 14px;font-size:10.5px}
 
 /* ---------- certification strip ---------- */
 .certs{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);margin-top:44px;border:1px solid var(--line)}
