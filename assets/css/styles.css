@@ -161,10 +161,10 @@ a{color:inherit}
 
 /* ---------- solution cards ---------- */
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(20px,2.4vw,30px);margin-top:52px}
-.card{background:var(--paper);display:flex;flex-direction:column;border:1px solid var(--line)}
-.card__art{aspect-ratio:16/10;position:relative;overflow:hidden;background:var(--shell)}
-.card__art svg{position:absolute;inset:0;width:100%;height:100%}
-.card__body{padding:26px 26px 28px;display:flex;flex-direction:column;gap:12px;flex:1}
+.card{background:var(--paper);display:flex;gap:20px;align-items:flex-start;padding:28px 26px;border:1px solid var(--line)}
+.card__art{flex:0 0 20%;max-width:64px;aspect-ratio:1/1;border-radius:50%;background:var(--mist);display:grid;place-items:center}
+.card__art svg{width:30px;height:30px}
+.card__body{display:flex;flex-direction:column;gap:12px;flex:1 1 80%;min-width:0}
 .card__kick{font-family:var(--f-display);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--green)}
 .card h3{font-size:21px;font-weight:500;line-height:1.24}
 .card p{color:var(--stone);font-size:16px;flex:1}
@@ -203,6 +203,8 @@ a{color:inherit}
 .member__photo{width:160px;height:160px;border-radius:50%;object-fit:cover;object-position:top center;border:1px solid var(--line)}
 .member h3{font-size:19px;font-weight:500}
 .member .role{font-family:var(--f-display);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--green)}
+.member__li{display:inline-flex;margin-top:2px}
+.member__li svg{width:20px;height:20px}
 
 /* ---------- insights ---------- */
 .insights{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);margin-top:48px;border:1px solid var(--line)}
