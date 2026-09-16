@@ -15,11 +15,13 @@
       if(e.key === 'ArrowLeft'){ var p = tabs[(i-1+tabs.length)%tabs.length]; p.focus(); select(p); }
     });
   });
+  var form = document.getElementById('enquiry');
+  if(!form) return;
+
   var SUPABASE_URL = 'https://bogzsjzqdewbsgglqvpr.supabase.co';
   var SUPABASE_KEY = 'sb_publishable_XSUzq3WQdWNTqKpVYivYDw_Q9aCGcwc';
   var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  var form = document.getElementById('enquiry');
   var msg = document.getElementById('formmsg');
   form.addEventListener('submit', function(e){
     e.preventDefault();
