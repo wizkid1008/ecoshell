@@ -161,10 +161,10 @@ a{color:inherit}
 
 /* ---------- solution cards ---------- */
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(20px,2.4vw,30px);margin-top:52px}
-.card{background:var(--paper);display:flex;gap:20px;align-items:flex-start;padding:28px 26px;border:1px solid var(--line)}
-.card__art{flex:0 0 20%;max-width:64px;aspect-ratio:1/1;border-radius:50%;background:var(--mist);display:grid;place-items:center}
-.card__art svg{width:30px;height:30px}
-.card__body{display:flex;flex-direction:column;gap:12px;flex:1 1 80%;min-width:0}
+.card{background:var(--paper);display:flex;align-items:stretch;border:1px solid var(--line)}
+.card__art{flex:0 0 20%;background:var(--shell);display:grid;place-items:center;padding:12px}
+.card__art svg{width:34px;height:34px}
+.card__body{display:flex;flex-direction:column;gap:12px;flex:1 1 80%;min-width:0;padding:28px 26px}
 .card__kick{font-family:var(--f-display);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--green)}
 .card h3{font-size:21px;font-weight:500;line-height:1.24}
 .card p{color:var(--stone);font-size:16px;flex:1}
