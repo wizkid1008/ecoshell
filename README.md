@@ -27,11 +27,35 @@ powershell -File .claude/serve.ps1
 
 Then open http://localhost:8791.
 
-## Backend
+## Backend prototype
 
-The contact form in `assets/js/main.js` submits directly to Supabase
-(`enquiries` table, protected by row-level security: anonymous inserts only,
-reads require an authenticated session).
+The contact form submits to a Cloudflare Pages Function at `/api/enquiries`.
+That API creates or finds a company, stores the enquiry, opens a project and
+adds the first client-visible update.
+
+Prototype portal pages:
+
+- `client.html` lets a client enter their work email and view their projects,
+  sample status and project updates.
+- `admin.html` lets an admin review companies, enquiries, projects and sample
+  requests.
+
+Backend files:
+
+- `functions/api/enquiries/index.js` handles website enquiries.
+- `functions/api/client/projects.js` returns projects linked to a client email.
+- `functions/api/admin/overview.js` returns the admin dashboard data.
+- `functions/api/admin/projects.js` updates project status and client updates.
+- `supabase/schema.sql` defines the prototype database tables and RLS policies.
+
+Required Cloudflare environment variables:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ADMIN_PORTAL_TOKEN`
+
+The portal pages include demo fallback data so the prototype can be explored
+before the Cloudflare/Supabase environment variables are connected.
 
 ## Deployment
 

@@ -1,0 +1,63 @@
+export function json(data, init = {}) {
+  return new Response(JSON.stringify(data), {
+    ...init,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      ...(init.headers || {})
+    }
+  });
+}
+
+export function requireEnv(env, keys) {
+  const missing = keys.filter((key) => !env[key]);
+  if (missing.length) {
+    return `Missing required environment variables: ${missing.join(', ')}`;
+  }
+  return null;
+}
+
+export async function supabaseFetch(env, path, options = {}) {
+  const url = `${env.SUPABASE_URL}/rest/v1/${path}`;
+  const headers = {
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+    authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    'content-type': 'application/json',
+    ...(options.headers || {})
+  };
+
+  const res = await fetch(url, {...options, headers});
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : null;
+
+  if (!res.ok) {
+    const error = body?.message || body?.error || `Supabase request failed with ${res.status}`;
+    throw new Error(error);
+  }
+
+  return body;
+}
+
+export function cleanString(value) {
+  return String(value || '').trim();
+}
+
+export function generateToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+export async function sendEmail(env, {to, subject, html}) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({from: env.RESEND_FROM_EMAIL, to, subject, html})
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to send email: ${text}`);
+  }
+}

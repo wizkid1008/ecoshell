@@ -256,6 +256,42 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 .formnote{font-size:13.5px;color:var(--stone-2)}
 #formmsg{font-size:14.5px;color:var(--deep);background:var(--mist);border-left:3px solid var(--lime);padding:12px 14px}
 
+/* ---------- portals ---------- */
+.portal{background:var(--mist);min-height:calc(100vh - 75px)}
+.portal__mast{background:var(--deep);color:#fff}
+.portal__mast .wrap{padding-block:clamp(44px,6vw,76px);display:grid;gap:22px}
+.portal__mast h1{font-size:clamp(32px,4vw,52px);font-weight:300;line-height:1.1;max-width:780px;color:#fff}
+.portal__hint{color:#C2D4C8;font-size:15px;max-width:680px}
+.portal-status{color:#C2D4C8;font-size:15px;max-width:680px;min-height:1.2em}
+.portal-status.is-error{color:#F3A6A0}
+.portal-login{background:rgba(255,255,255,.08);border-color:var(--line-dark);display:grid;grid-template-columns:minmax(220px,420px) auto;gap:16px;align-items:end;max-width:720px;padding:22px}
+.portal-login .field label{color:#C2D4C8}
+.portal-login .field input{background:transparent;color:#fff;border-bottom-color:rgba(255,255,255,.32)}
+.portal-login .field input::placeholder{color:#9FB4A7}
+.portal-login .field input:focus{border-bottom-color:var(--green-lift)}
+.portal__body .wrap{padding-block:clamp(34px,5vw,64px)}
+.portal-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:26px}
+.portal-kpis article{background:var(--paper);padding:22px;display:grid;gap:4px}
+.portal-kpis b{font-family:var(--f-display);font-size:34px;font-weight:300;color:var(--deep);line-height:1}
+.portal-kpis span{font-family:var(--f-display);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone)}
+.portal-list{display:grid;gap:16px}
+.portal-card{background:var(--paper);border:1px solid var(--line);padding:clamp(20px,3vw,30px);display:grid;gap:16px}
+.portal-card__top{display:flex;align-items:start;justify-content:space-between;gap:18px}
+.portal-card h2{font-size:clamp(21px,2.3vw,28px);font-weight:400;line-height:1.2}
+.portal-card h3{font-size:14px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--green)}
+.portal-card p{color:var(--stone)}
+.portal-ref{font-family:var(--f-display);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
+.pill{font-family:var(--f-display);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--deep);background:var(--shell);border:1px solid var(--line);padding:7px 10px;white-space:nowrap}
+.portal-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);margin:0}
+.portal-meta div{background:var(--mist);padding:12px 14px}
+.portal-meta dt{font-family:var(--f-display);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--stone-2)}
+.portal-meta dd{margin:2px 0 0;color:var(--deep)}
+.portal-note{background:var(--mist);border-left:3px solid var(--lime);padding:12px 14px;color:var(--deep)!important}
+.portal-updates{margin:0;padding-left:18px;color:var(--stone)}
+.portal-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.portal-tabs button{font-family:var(--f-display);font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--line);background:var(--paper);color:var(--deep);padding:10px 14px;cursor:pointer}
+.portal-tabs button.is-active{background:var(--deep);border-color:var(--deep);color:#fff}
+
 /* ---------- footer ---------- */
 footer{background:var(--ink);color:#A9B9AF}
 .foot{display:grid;grid-template-columns:1.4fr repeat(4,1fr);gap:clamp(24px,3vw,40px);padding-block:clamp(48px,6vw,72px)}
@@ -300,6 +336,10 @@ footer{background:var(--ink);color:#A9B9AF}
   .reports{grid-template-columns:repeat(2,1fr)}
   .insights{grid-template-columns:1fr}
   .frow{grid-template-columns:1fr}
+  .portal-login{grid-template-columns:1fr}
+  .portal-kpis{grid-template-columns:1fr 1fr}
+  .portal-meta{grid-template-columns:1fr}
+  .portal-card__top{display:grid}
   .foot{grid-template-columns:1fr}
   .stats .wrap{grid-template-columns:1fr}
   .office{grid-template-columns:1fr;gap:4px}

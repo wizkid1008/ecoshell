@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Ecoshell client portal prototype for project status, samples and updates.">
+<title>Client Portal — Ecoshell</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Source+Sans+3:wght@300;400;600&display=swap">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><g id="eggIcon"><path d="M12 1.5 C19 8.5 23 14.5 23 19 A11 11 0 0 1 1 19 C1 14.5 5 8.5 12 1.5 Z"/></g></defs>
+</svg>
+
+<header class="topbar"><div class="wrap">
+  <a href="index.html" style="text-decoration:none" aria-label="Ecoshell home">
+    <span class="mark">ec<svg class="egg" viewBox="0 0 24 30" aria-hidden="true"><g fill="#5FA974"><use href="#eggIcon"/></g></svg>shell<span class="tm">™</span></span>
+  </a>
+  <nav class="nav" aria-label="Primary">
+    <a href="solutions.html">Solutions</a>
+    <a href="sustainability.html">Sustainability</a>
+    <a href="insights.html">Insights</a>
+    <a href="about.html">Our Company</a>
+    <a href="contact.html">Contact</a>
+    <a href="client.html" aria-current="page">Client Portal</a>
+  </nav>
+</div></header>
+
+<main class="portal portal--client">
+  <section class="portal__mast">
+    <div class="wrap">
+      <p class="eyebrow">Client portal prototype</p>
+      <h1>Track material reviews, sample requests and next steps.</h1>
+      <form class="portal-login" id="clientLogin">
+        <div class="field">
+          <label for="clientEmail">Work email</label>
+          <input id="clientEmail" name="clientEmail" type="email" autocomplete="email" placeholder="name@company.com" required>
+        </div>
+        <button class="btn btn--solid" type="submit">Send login link</button>
+      </form>
+      <p class="portal-status" id="clientLoginStatus" role="status" aria-live="polite"></p>
+      <p class="portal__hint">Enter the same email used on an enquiry and we'll send a one-time login link, valid for 15 minutes.</p>
+    </div>
+  </section>
+
+  <section class="portal__body">
+    <div class="wrap">
+      <div class="portal-kpis" id="clientKpis"></div>
+      <div class="portal-list" id="clientProjects"></div>
+    </div>
+  </section>
+</main>
+
+<script src="assets/js/portal.js"></script>
+</body>
+</html>

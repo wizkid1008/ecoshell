@@ -18,16 +18,15 @@
   var form = document.getElementById('enquiry');
   if(!form) return;
 
-  var SUPABASE_URL = 'https://bogzsjzqdewbsgglqvpr.supabase.co';
-  var SUPABASE_KEY = 'sb_publishable_XSUzq3WQdWNTqKpVYivYDw_Q9aCGcwc';
-  var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
   var msg = document.getElementById('formmsg');
   form.addEventListener('submit', function(e){
     e.preventDefault();
     var submitBtn = form.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
-    supabase.from('enquiries').insert({
+    fetch('/api/enquiries', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
       first_name: form.fn.value,
       last_name: form.ln.value,
       company: form.co.value,
@@ -35,15 +34,19 @@
       country: form.ct.value,
       application: form.ap.value,
       message: form.ms.value
+      })
     }).then(function(res){
+      if(!res.ok) throw new Error('enquiry failed');
+      return res.json();
+    }).then(function(){
       submitBtn.disabled = false;
       msg.hidden = false;
-      if(res.error){
-        msg.textContent = 'Something went wrong sending your enquiry. Please try again or email us directly.';
-      } else {
-        msg.textContent = 'Thanks — your enquiry has been sent. Our team will be in touch shortly.';
-        form.reset();
-      }
+      msg.textContent = 'Thanks — your enquiry has been sent. Our team will be in touch shortly.';
+      form.reset();
+    }).catch(function(){
+      submitBtn.disabled = false;
+      msg.hidden = false;
+      msg.textContent = 'Something went wrong sending your enquiry. Please try again or email us directly.';
     });
   });
 })();

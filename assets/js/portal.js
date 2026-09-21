@@ -1,0 +1,177 @@
+(function(){
+  var form = document.getElementById('clientLogin');
+  if(!form) return;
+
+  var list = document.getElementById('clientProjects');
+  var kpis = document.getElementById('clientKpis');
+  var statusEl = document.getElementById('clientLoginStatus');
+  var SESSION_KEY = 'ecoshell_client_session';
+
+  var demo = {
+    projects: [
+      {
+        reference_code: 'ECO-8A41C2F0',
+        name: 'Injection moulded closure review',
+        status: 'technical_review',
+        polymer: 'PP',
+        process: 'Injection moulding',
+        target: 'Reduce virgin plastic while keeping stiffness and food-contact readiness.',
+        companies: {name: 'Demo Packaging Co.'},
+        sample_requests: [{status: 'preparing', tracking_number: null}],
+        project_updates: [
+          {body: 'Technical review is underway. Ecoshell is checking process fit and likely loading range.', created_at: new Date().toISOString()},
+          {body: 'Initial inquiry received and converted into a project.', created_at: new Date(Date.now() - 86400000).toISOString()}
+        ]
+      },
+      {
+        reference_code: 'ECO-4B92D13A',
+        name: 'PET thermoformed tray pilot',
+        status: 'sample_shipped',
+        polymer: 'PET',
+        process: 'Thermoforming',
+        target: 'Explore a lower-plastic tray for a retail packaging pilot.',
+        companies: {name: 'Demo Packaging Co.'},
+        sample_requests: [{status: 'shipped', tracking_number: '1Z-DEMO-9241'}],
+        project_updates: [
+          {body: 'Sample pack shipped. Trial notes will appear here once testing begins.', created_at: new Date().toISOString()}
+        ]
+      }
+    ]
+  };
+
+  function labelStatus(status){
+    return String(status || 'new').replace(/_/g, ' ');
+  }
+
+  function esc(value){
+    return String(value || '').replace(/[&<>"']/g, function(char){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char];
+    });
+  }
+
+  function setStatus(message, isError){
+    if(!statusEl) return;
+    statusEl.textContent = message || '';
+    statusEl.classList.toggle('is-error', !!isError);
+  }
+
+  function render(data){
+    var projects = data.projects || [];
+    var active = projects.filter(function(project){ return !/closed|complete|not_fit/.test(project.status || ''); }).length;
+    var samples = projects.reduce(function(total, project){ return total + (project.sample_requests || []).length; }, 0);
+    kpis.innerHTML = [
+      '<article><b>' + projects.length + '</b><span>Projects</span></article>',
+      '<article><b>' + active + '</b><span>Active reviews</span></article>',
+      '<article><b>' + samples + '</b><span>Sample requests</span></article>'
+    ].join('');
+
+    if(!projects.length){
+      list.innerHTML = '<article class="portal-card"><h2>No projects found</h2><p>Use the same email submitted through the contact form, or ask Ecoshell to invite your company.</p></article>';
+      return;
+    }
+
+    list.innerHTML = projects.map(function(project){
+      var updates = (project.project_updates || []).slice(0, 3).map(function(update){
+        return '<li>' + esc(update.body) + '</li>';
+      }).join('');
+      var sample = (project.sample_requests || [])[0];
+      return '<article class="portal-card">' +
+        '<div class="portal-card__top"><div><p class="portal-ref">' + esc(project.reference_code) + '</p><h2>' + esc(project.name) + '</h2></div><span class="pill">' + esc(labelStatus(project.status)) + '</span></div>' +
+        '<dl class="portal-meta"><div><dt>Company</dt><dd>' + esc(project.companies?.name || 'Client company') + '</dd></div><div><dt>Polymer</dt><dd>' + esc(project.polymer || 'Review needed') + '</dd></div><div><dt>Process</dt><dd>' + esc(project.process || 'Review needed') + '</dd></div></dl>' +
+        '<p>' + esc(project.target || 'No project target has been added yet.') + '</p>' +
+        (sample ? '<p class="portal-note">Sample: ' + esc(labelStatus(sample.status)) + (sample.tracking_number ? ' · Tracking ' + esc(sample.tracking_number) : '') + '</p>' : '<p class="portal-note">No sample request yet.</p>') +
+        '<h3>Latest updates</h3><ul class="portal-updates">' + updates + '</ul>' +
+      '</article>';
+    }).join('');
+  }
+
+  function loadProjects(sessionToken){
+    list.innerHTML = '<article class="portal-card"><p>Loading projects...</p></article>';
+
+    fetch('/api/client/projects', {headers: {'x-client-session': sessionToken}})
+      .then(function(res){
+        if(res.status === 401){
+          sessionStorage.removeItem(SESSION_KEY);
+          setStatus('Your session has expired. Please request a new login link.', true);
+          render(demo);
+          return null;
+        }
+        if(!res.ok) throw new Error('client unavailable');
+        return res.json();
+      })
+      .then(function(data){
+        if(data) render(data);
+      })
+      .catch(function(){
+        setStatus('Could not reach the client portal service right now. Showing sample data instead.', true);
+        render(demo);
+      });
+  }
+
+  function exchangeMagicToken(token){
+    setStatus('Verifying your login link...', false);
+    list.innerHTML = '<article class="portal-card"><p>Verifying login link...</p></article>';
+
+    fetch('/api/client/session?token=' + encodeURIComponent(token))
+      .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
+      .then(function(result){
+        var url = new URL(window.location.href);
+        url.searchParams.delete('token');
+        window.history.replaceState({}, document.title, url.pathname + url.search);
+
+        if(!result.ok){
+          setStatus(result.body.error || 'This login link is invalid or has expired.', true);
+          render(demo);
+          return;
+        }
+
+        sessionStorage.setItem(SESSION_KEY, result.body.session_token);
+        setStatus('', false);
+        loadProjects(result.body.session_token);
+      })
+      .catch(function(){
+        setStatus('Could not verify the login link. Please request a new one.', true);
+        render(demo);
+      });
+  }
+
+  form.addEventListener('submit', function(event){
+    event.preventDefault();
+    var email = form.clientEmail.value.trim();
+    var submitButton = form.querySelector('button[type="submit"]');
+    if(submitButton) submitButton.disabled = true;
+    setStatus('Sending login link...', false);
+
+    fetch('/api/client/request-link', {
+      method: 'POST',
+      headers: {'content-type': 'application/json'},
+      body: JSON.stringify({email: email})
+    })
+      .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
+      .then(function(result){
+        if(submitButton) submitButton.disabled = false;
+        if(!result.ok){
+          setStatus(result.body.error || 'Something went wrong. Please try again.', true);
+          return;
+        }
+        setStatus('Check your email for a login link. It expires in 15 minutes.', false);
+        form.reset();
+      })
+      .catch(function(){
+        if(submitButton) submitButton.disabled = false;
+        setStatus('Could not reach the login service right now. Please try again shortly.', true);
+      });
+  });
+
+  var urlToken = new URL(window.location.href).searchParams.get('token');
+  if(urlToken){
+    exchangeMagicToken(urlToken);
+  } else {
+    var storedSession = sessionStorage.getItem(SESSION_KEY);
+    if(storedSession){
+      loadProjects(storedSession);
+    } else {
+      render(demo);
+    }
+  }
+})();
