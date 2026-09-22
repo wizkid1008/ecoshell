@@ -97,7 +97,7 @@
   var ROLE_KEY = 'ecoshell_role';
   var STATUS_KEY = 'ecoshell_status';
 
-  var state = {role: null, status: null, sessionToken: null, view: 'dashboard', data: null, profile: null, opportunity: null};
+  var state = {role: null, status: null, sessionToken: null, view: 'dashboard', data: null, profile: null, opportunity: null, returnView: null};
 
   var STAGES = [
     ['new_inquiry', 'New inquiry'],
@@ -115,9 +115,6 @@
   ];
 
   var ICON_DASHBOARD = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>';
-  var ICON_ENQUIRIES = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
-  var ICON_PROJECTS = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>';
-  var ICON_SAMPLES = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>';
   var ICON_CLIENTS = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
   var ICON_ACCOUNT = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
 
@@ -125,16 +122,28 @@
     return '<button type="button" class="app-nav__item" data-view="' + view + '">' + icon + label + '</button>';
   }
 
+  function stageNavItem(pair, count){
+    return '<button type="button" class="app-nav__item" data-view="stage:' + pair[0] + '">' + esc(pair[1]) + '<span class="app-nav__count">' + count + '</span></button>';
+  }
+
   var CLIENT_NAV = '<p class="app-nav__label">Overview</p>' +
     navItem('dashboard', ICON_DASHBOARD, 'Dashboard') +
     navItem('account', ICON_ACCOUNT, 'Account');
 
-  var ADMIN_NAV = '<p class="app-nav__label">Workspace</p>' +
-    navItem('enquiries', ICON_ENQUIRIES, 'Enquiries') +
-    navItem('projects', ICON_PROJECTS, 'Opportunities') +
-    navItem('samples', ICON_SAMPLES, 'Samples') +
-    navItem('clients', ICON_CLIENTS, 'Clients') +
-    navItem('account', ICON_ACCOUNT, 'Account');
+  // Admin nav is built dynamically (see adminNavHtml) so each pipeline stage
+  // can show a live count of opportunities currently sitting in it.
+  function adminNavHtml(projects){
+    var counts = countBy(projects || [], 'status');
+    var open = STAGES.slice(0, 10);
+    var closed = STAGES.slice(10);
+    return '<p class="app-nav__label">Pipeline</p>' +
+      open.map(function(pair){ return stageNavItem(pair, counts[pair[0]] || 0); }).join('') +
+      '<p class="app-nav__label">Closed</p>' +
+      closed.map(function(pair){ return stageNavItem(pair, counts[pair[0]] || 0); }).join('') +
+      '<p class="app-nav__label">Workspace</p>' +
+      navItem('clients', ICON_CLIENTS, 'Clients') +
+      navItem('account', ICON_ACCOUNT, 'Account');
+  }
 
   var INDUSTRIES = ['Beauty', 'Fashion', 'Food and Agri', 'Health & Life Sciences', 'Tech', 'Toys'];
   var ARCHETYPES = [
@@ -245,18 +254,25 @@
     userEmailEl.textContent = email;
     userRoleEl.textContent = role === 'admin' ? 'Admin' : labelStatus(status || 'lead');
     avatarEl.textContent = email ? email.charAt(0).toUpperCase() : '?';
-    appNav.innerHTML = role === 'admin' ? ADMIN_NAV : CLIENT_NAV;
+    // Placeholder counts until loadAdminDashboard fetches real data and calls renderAdminNav.
+    appNav.innerHTML = role === 'admin' ? adminNavHtml(adminDemo.projects) : CLIENT_NAV;
 
-    appNav.querySelectorAll('.app-nav__item[data-view]').forEach(function(tab){
-      tab.addEventListener('click', function(){
-        state.view = tab.dataset.view;
-        state.opportunity = null;
-        setActiveNav(state.view);
-        renderCurrentView();
-      });
+    // Delegated on the container (not per-item) so it survives renderAdminNav rebuilding the nav.
+    appNav.addEventListener('click', function(event){
+      var tab = event.target.closest('.app-nav__item[data-view]');
+      if(!tab) return;
+      state.view = tab.dataset.view;
+      state.opportunity = null;
+      setActiveNav(state.view);
+      renderCurrentView();
     });
 
-    state.view = role === 'admin' ? 'enquiries' : 'dashboard';
+    state.view = role === 'admin' ? 'stage:new_inquiry' : 'dashboard';
+    setActiveNav(state.view);
+  }
+
+  function renderAdminNav(data){
+    appNav.innerHTML = adminNavHtml(data.projects);
     setActiveNav(state.view);
   }
 
@@ -504,7 +520,7 @@
     });
   }
 
-  function openNewOpportunityModal(){
+  function openNewOpportunityModal(defaultStage){
     openModal({
       title: 'New opportunity',
       saveLabel: 'Add opportunity',
@@ -518,7 +534,7 @@
           '<div class="field"><label for="newOppContactName">Contact name</label><input id="newOppContactName" placeholder="Jordan Lee"></div>' +
           '<div class="field"><label for="newOppContactEmail">Contact email</label><input id="newOppContactEmail" type="email" placeholder="jordan@acme.com"></div>' +
         '</div>' +
-        '<div class="field"><label for="newOppStage">Starting stage</label><select id="newOppStage">' + stageOptions('new_inquiry') + '</select></div>',
+        '<div class="field"><label for="newOppStage">Starting stage</label><select id="newOppStage">' + stageOptions(defaultStage || 'new_inquiry') + '</select></div>',
       onSave: function(modalEl, done){
         var companyName = document.getElementById('newOppCompany').value.trim();
         var oppName = document.getElementById('newOppName').value.trim();
@@ -545,47 +561,32 @@
     });
   }
 
+  function renderStageView(data, stage){
+    var stagePair = STAGES.find(function(s){ return s[0] === stage; });
+    var stageLabel = stagePair ? stagePair[1] : labelStatus(stage);
+    var projectRows = data.projects.filter(function(item){ return item.status === stage; }).map(function(item){
+      var sub = (item.companies?.name || 'Company') + ' · Owner: ' + (item.owner ? (item.owner.name || item.owner.email) : 'Unassigned') +
+        ' · Contact: ' + (item.contact ? (item.contact.name || item.contact.email) : 'No contact');
+      return rowItem({
+        title: item.reference_code + ' — ' + item.name, sub: sub,
+        clickable: true, dataAttrs: ' data-open-project="' + esc(item.id) + '"'
+      });
+    });
+    list.innerHTML =
+      '<article class="portal-card">' +
+        '<div class="card-head"><h3>' + esc(stageLabel) + '</h3><button type="button" class="btn" id="newOppBtn">' + ICON_PLUS + 'New opportunity</button></div>' +
+        rowlistHtml(projectRows, 'No opportunities at this stage.', true) +
+      '</article>';
+    list.querySelectorAll('[data-open-project]').forEach(function(el){
+      el.addEventListener('click', function(){ openOpportunity(el.getAttribute('data-open-project')); });
+    });
+    document.getElementById('newOppBtn').addEventListener('click', function(){ openNewOpportunityModal(stage); });
+  }
+
   function renderAdminList(){
     var data = state.data || adminDemo;
-    if(state.view === 'enquiries'){
-      var enquiryRows = data.enquiries.map(function(item){
-        return rowItem({
-          title: item.company || (item.first_name + ' ' + item.last_name),
-          sub: item.email + ' · ' + item.application + (item.message ? ' — ' + item.message : ''),
-          status: item.status
-        });
-      });
-      list.innerHTML = '<article class="portal-card"><h3>Enquiries</h3>' + rowlistHtml(enquiryRows, 'No enquiries yet.') + '</article>';
-    }
-    if(state.view === 'projects'){
-      var projectRows = data.projects.map(function(item){
-        var sub = (item.companies?.name || 'Company') + ' · Owner: ' + (item.owner ? (item.owner.name || item.owner.email) : 'Unassigned') +
-          ' · Contact: ' + (item.contact ? (item.contact.name || item.contact.email) : 'No contact');
-        return rowItem({
-          title: item.reference_code + ' — ' + item.name, sub: sub, status: item.status,
-          clickable: true, dataAttrs: ' data-open-project="' + esc(item.id) + '"'
-        });
-      });
-      list.innerHTML =
-        '<article class="portal-card">' +
-          '<div class="card-head"><h3>Opportunities</h3><button type="button" class="btn" id="newOppBtn">' + ICON_PLUS + 'New opportunity</button></div>' +
-          rowlistHtml(projectRows, 'No opportunities yet. They show up here from an enquiry, or add one directly.', true) +
-        '</article>';
-      list.querySelectorAll('[data-open-project]').forEach(function(el){
-        el.addEventListener('click', function(){ openOpportunity(el.getAttribute('data-open-project')); });
-      });
-      document.getElementById('newOppBtn').addEventListener('click', openNewOpportunityModal);
-    }
-    if(state.view === 'samples'){
-      var sampleRows = data.samples.map(function(item){
-        var project = item.projects || {};
-        return rowItem({
-          title: project.name || 'Sample request',
-          sub: (project.reference_code || 'Project') + ' · ' + (project.companies?.name || 'Company') + (item.tracking_number ? ' · Tracking ' + item.tracking_number : ''),
-          status: item.status
-        });
-      });
-      list.innerHTML = '<article class="portal-card"><h3>Samples</h3>' + rowlistHtml(sampleRows, 'No sample requests yet.') + '</article>';
+    if(state.view.indexOf('stage:') === 0){
+      renderStageView(data, state.view.slice(6));
     }
     if(state.view === 'clients'){
       renderClientsView(data);
@@ -601,12 +602,13 @@
   function backToOpportunities(){
     kpis.hidden = false;
     state.opportunity = null;
-    state.view = 'projects';
-    setActiveNav('projects');
+    state.view = state.returnView || 'stage:new_inquiry';
+    setActiveNav(state.view);
     renderAdminList();
   }
 
   function openOpportunity(id){
+    if(state.view.indexOf('stage:') === 0 || state.view === 'clients') state.returnView = state.view;
     kpis.hidden = true;
     list.innerHTML = '<article class="portal-card"><p>Loading opportunity...</p></article>';
     apiFetch('/api/admin/opportunity?id=' + encodeURIComponent(id))
@@ -949,6 +951,7 @@
         }
         setStatus('', false);
         state.data = result.body;
+        renderAdminNav(result.body);
         renderAdminKpis(result.body);
         renderAdminList();
       })
