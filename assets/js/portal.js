@@ -8,7 +8,11 @@
   var authSection = document.getElementById('authSection');
   var dashboardSection = document.getElementById('dashboardSection');
   var signOutButton = document.getElementById('clientSignOut');
+  var siteHeader = document.getElementById('siteHeader');
+  var userEmailEl = document.getElementById('clientUserEmail');
+  var avatarEl = document.getElementById('clientAvatar');
   var SESSION_KEY = 'ecoshell_client_session';
+  var EMAIL_KEY = 'ecoshell_client_email';
 
   var demo = {
     projects: [
@@ -61,11 +65,17 @@
   function showDashboard(){
     authSection.hidden = true;
     dashboardSection.hidden = false;
+    if(siteHeader) siteHeader.hidden = true;
+
+    var email = sessionStorage.getItem(EMAIL_KEY) || '';
+    if(userEmailEl) userEmailEl.textContent = email;
+    if(avatarEl) avatarEl.textContent = email ? email.charAt(0) : '?';
   }
 
   function showAuth(){
     dashboardSection.hidden = true;
     authSection.hidden = false;
+    if(siteHeader) siteHeader.hidden = false;
   }
 
   function render(data){
@@ -106,6 +116,7 @@
       .then(function(res){
         if(res.status === 401){
           sessionStorage.removeItem(SESSION_KEY);
+          sessionStorage.removeItem(EMAIL_KEY);
           setStatus('Your session has expired. Please sign in again.', true);
           showAuth();
           return null;
@@ -143,6 +154,7 @@
           return;
         }
         sessionStorage.setItem(SESSION_KEY, result.body.session_token);
+        sessionStorage.setItem(EMAIL_KEY, result.body.email || '');
         setStatus('', false);
         loadProjects(result.body.session_token);
       })
@@ -155,6 +167,7 @@
   if(signOutButton){
     signOutButton.addEventListener('click', function(){
       sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(EMAIL_KEY);
       form.reset();
       showAuth();
     });

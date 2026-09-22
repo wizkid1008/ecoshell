@@ -20,7 +20,7 @@
   <defs><g id="eggIcon"><path d="M12 1.5 C19 8.5 23 14.5 23 19 A11 11 0 0 1 1 19 C1 14.5 5 8.5 12 1.5 Z"/></g></defs>
 </svg>
 
-<header class="topbar"><div class="wrap">
+<header class="topbar" id="siteHeader"><div class="wrap">
   <a href="index.html" style="text-decoration:none" aria-label="Ecoshell home">
     <span class="mark">ec<svg class="egg" viewBox="0 0 24 30" aria-hidden="true"><g fill="#5FA974"><use href="#eggIcon"/></g></svg>shell<span class="tm">™</span></span>
   </a>
@@ -52,20 +52,45 @@
     </div>
   </section>
 
-  <section class="portal__body" id="dashboardSection" hidden>
-    <div class="wrap">
-      <div class="dashboard-top">
+  <section class="app-shell" id="dashboardSection" hidden>
+    <aside class="app-sidebar">
+      <a href="index.html" class="app-sidebar__brand"><span class="mark mark--light">ec<svg class="egg" viewBox="0 0 24 30" aria-hidden="true"><g fill="#7FC492"><use href="#eggIcon"/></g></svg>shell<span class="tm">™</span></span></a>
+      <nav class="app-nav" role="tablist" aria-label="Admin views">
+        <p class="app-nav__label">Workspace</p>
+        <button type="button" class="app-nav__item is-active" data-view="enquiries">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Enquiries
+        </button>
+        <button type="button" class="app-nav__item" data-view="projects">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          Projects
+        </button>
+        <button type="button" class="app-nav__item" data-view="samples">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+          Samples
+        </button>
+        <button type="button" class="app-nav__item" data-view="companies">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+          Companies
+        </button>
+      </nav>
+      <div class="app-sidebar__user">
+        <div class="app-avatar" id="adminAvatar">?</div>
+        <div class="app-sidebar__user-info">
+          <b id="adminUserEmail"></b>
+          <span>Admin</span>
+        </div>
+        <button class="app-sidebar__signout" type="button" id="adminSignOut" aria-label="Sign out">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        </button>
+      </div>
+    </aside>
+    <div class="app-content">
+      <div class="app-content__inner">
         <h1>Manage client inquiries from first contact to sample trial.</h1>
-        <button class="btn" type="button" id="adminSignOut">Sign out</button>
+        <div class="portal-kpis" id="adminKpis"></div>
+        <div class="portal-list" id="adminList"></div>
       </div>
-      <div class="portal-kpis" id="adminKpis"></div>
-      <div class="portal-tabs" role="tablist" aria-label="Admin views">
-        <button type="button" class="is-active" data-view="enquiries">Enquiries</button>
-        <button type="button" data-view="projects">Projects</button>
-        <button type="button" data-view="samples">Samples</button>
-        <button type="button" data-view="companies">Companies</button>
-      </div>
-      <div class="portal-list" id="adminList"></div>
     </div>
   </section>
 </main>

@@ -4,9 +4,10 @@
 
   var kpis = document.getElementById('adminKpis');
   var list = document.getElementById('adminList');
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('.portal-tabs button'));
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.app-nav__item[data-view]'));
   var state = {view: 'enquiries', data: null};
   var SESSION_KEY = 'ecoshell_admin_session';
+  var EMAIL_KEY = 'ecoshell_admin_email';
 
   var demo = {
     companies: [
@@ -97,15 +98,24 @@
   var authSection = document.getElementById('authSection');
   var dashboardSection = document.getElementById('dashboardSection');
   var signOutButton = document.getElementById('adminSignOut');
+  var siteHeader = document.getElementById('siteHeader');
+  var userEmailEl = document.getElementById('adminUserEmail');
+  var avatarEl = document.getElementById('adminAvatar');
 
   function showDashboard(){
     authSection.hidden = true;
     dashboardSection.hidden = false;
+    if(siteHeader) siteHeader.hidden = true;
+
+    var email = sessionStorage.getItem(EMAIL_KEY) || '';
+    if(userEmailEl) userEmailEl.textContent = email;
+    if(avatarEl) avatarEl.textContent = email ? email.charAt(0) : '?';
   }
 
   function showAuth(){
     dashboardSection.hidden = true;
     authSection.hidden = false;
+    if(siteHeader) siteHeader.hidden = false;
   }
 
   function loadOverview(sessionToken){
@@ -118,6 +128,7 @@
         if(!result.ok){
           if(result.status === 401){
             sessionStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(EMAIL_KEY);
             setStatus(result.body.error || 'Please log in again.', true);
             showAuth();
             return;
@@ -158,6 +169,7 @@
           return;
         }
         sessionStorage.setItem(SESSION_KEY, result.body.session_token);
+        sessionStorage.setItem(EMAIL_KEY, result.body.email || '');
         setStatus('', false);
         loadOverview(result.body.session_token);
       })
@@ -170,6 +182,7 @@
   if(signOutButton){
     signOutButton.addEventListener('click', function(){
       sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(EMAIL_KEY);
       form.reset();
       showAuth();
     });

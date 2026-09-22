@@ -20,7 +20,7 @@
   <defs><g id="eggIcon"><path d="M12 1.5 C19 8.5 23 14.5 23 19 A11 11 0 0 1 1 19 C1 14.5 5 8.5 12 1.5 Z"/></g></defs>
 </svg>
 
-<header class="topbar"><div class="wrap">
+<header class="topbar" id="siteHeader"><div class="wrap">
   <a href="index.html" style="text-decoration:none" aria-label="Ecoshell home">
     <span class="mark">ec<svg class="egg" viewBox="0 0 24 30" aria-hidden="true"><g fill="#5FA974"><use href="#eggIcon"/></g></svg>shell<span class="tm">™</span></span>
   </a>
@@ -55,14 +55,30 @@
     </div>
   </section>
 
-  <section class="portal__body" id="dashboardSection" hidden>
-    <div class="wrap">
-      <div class="dashboard-top">
-        <h1>Track material reviews, sample requests and next steps.</h1>
-        <button class="btn" type="button" id="clientSignOut">Sign out</button>
+  <section class="app-shell" id="dashboardSection" hidden>
+    <aside class="app-sidebar">
+      <a href="index.html" class="app-sidebar__brand"><span class="mark mark--light">ec<svg class="egg" viewBox="0 0 24 30" aria-hidden="true"><g fill="#7FC492"><use href="#eggIcon"/></g></svg>shell<span class="tm">™</span></span></a>
+      <nav class="app-nav">
+        <p class="app-nav__label">Overview</p>
+        <span class="app-nav__item is-active"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</span>
+      </nav>
+      <div class="app-sidebar__user">
+        <div class="app-avatar" id="clientAvatar">?</div>
+        <div class="app-sidebar__user-info">
+          <b id="clientUserEmail"></b>
+          <span>Client</span>
+        </div>
+        <button class="app-sidebar__signout" type="button" id="clientSignOut" aria-label="Sign out">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        </button>
       </div>
-      <div class="portal-kpis" id="clientKpis"></div>
-      <div class="portal-list" id="clientProjects"></div>
+    </aside>
+    <div class="app-content">
+      <div class="app-content__inner">
+        <h1>Track material reviews, sample requests and next steps.</h1>
+        <div class="portal-kpis" id="clientKpis"></div>
+        <div class="portal-list" id="clientProjects"></div>
+      </div>
     </div>
   </section>
 </main>
