@@ -8,15 +8,14 @@ export async function adminOverview({request, env}) {
   if (!user || user.role !== 'admin') return json({error: 'Admin session is invalid or has expired. Please log in again.'}, {status: 401});
 
   try {
-    const [companies, enquiries, projects, samples, clients] = await Promise.all([
-      supabaseFetch(env, 'companies?select=id,name,region,industry,access_status,created_at&order=created_at.desc'),
+    const [enquiries, projects, samples, clients] = await Promise.all([
       supabaseFetch(env, 'enquiries?select=id,first_name,last_name,company,email,country,application,message,status,created_at&order=created_at.desc'),
-      supabaseFetch(env, 'projects?select=id,reference_code,name,status,polymer,process,target,created_at,companies(name)&order=created_at.desc'),
-      supabaseFetch(env, 'sample_requests?select=id,status,shipping_name,tracking_number,created_at,projects(reference_code,name,companies(name))&order=created_at.desc'),
-      supabaseFetch(env, 'users?role=eq.client&select=email,name,company_name,job_title,phone,country,industry,archetype,created_at&order=created_at.desc')
+      supabaseFetch(env, 'projects?select=id,reference_code,name,status,polymer,process,target,created_at,users(company_name)&order=created_at.desc'),
+      supabaseFetch(env, 'sample_requests?select=id,status,shipping_name,tracking_number,created_at,projects(reference_code,name,users(company_name))&order=created_at.desc'),
+      supabaseFetch(env, 'users?role=eq.member&select=email,name,status,company_name,job_title,phone,country,industry,archetype,created_at&order=created_at.desc')
     ]);
 
-    return json({companies, enquiries, projects, samples, clients});
+    return json({enquiries, projects, samples, clients});
   } catch (error) {
     return json({error: error.message}, {status: 500});
   }

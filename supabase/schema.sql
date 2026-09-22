@@ -1,26 +1,41 @@
 create extension if not exists pgcrypto;
 
 -- One-time cleanup: replaces the old split admin_users/client_accounts/
--- admin_login_tokens/client_login_tokens tables with a single users table.
--- Safe to run even if these were already dropped.
+-- admin_login_tokens/client_login_tokens tables with a single users table,
+-- and folds companies into users too (a company/lead is now just a users
+-- row with no password_hash yet). users/enquiries/projects are dropped and
+-- recreated outright rather than patched in place, since the role values
+-- and the company_id -> user_id foreign key are changing shape, not just
+-- gaining columns. There's no production data yet -- safe to run even if
+-- these were already dropped.
 drop table if exists admin_users cascade;
 drop table if exists client_accounts cascade;
 drop table if exists admin_login_tokens cascade;
 drop table if exists client_login_tokens cascade;
+drop table if exists companies cascade;
+drop table if exists enquiries cascade;
+drop table if exists projects cascade;
+drop table if exists users cascade;
 
-create table if not exists companies (
+create table if not exists users (
   id uuid primary key default gen_random_uuid(),
-  name text not null,
-  slug text unique not null,
-  region text,
+  email text unique not null,
+  password_hash text,
+  role text not null default 'member' check (role in ('member', 'admin')),
+  status text check (status in ('lead', 'contact', 'client')),
+  name text,
+  company_name text,
+  job_title text,
+  phone text,
+  country text,
   industry text,
-  access_status text not null default 'lead',
+  archetype text,
   created_at timestamptz not null default now()
 );
 
 create table if not exists enquiries (
   id uuid primary key default gen_random_uuid(),
-  company_id uuid references companies(id) on delete set null,
+  user_id uuid references users(id) on delete set null,
   first_name text,
   last_name text,
   company text not null,
@@ -34,7 +49,7 @@ create table if not exists enquiries (
 
 create table if not exists projects (
   id uuid primary key default gen_random_uuid(),
-  company_id uuid references companies(id) on delete cascade,
+  user_id uuid references users(id) on delete cascade,
   enquiry_id uuid references enquiries(id) on delete set null,
   reference_code text unique not null default ('ECO-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8))),
   name text not null,
@@ -76,21 +91,6 @@ create table if not exists project_updates (
   created_at timestamptz not null default now()
 );
 
-create table if not exists users (
-  id uuid primary key default gen_random_uuid(),
-  email text unique not null,
-  password_hash text,
-  role text not null default 'client' check (role in ('client', 'admin')),
-  name text,
-  company_name text,
-  job_title text,
-  phone text,
-  country text,
-  industry text,
-  archetype text,
-  created_at timestamptz not null default now()
-);
-
 create table if not exists login_tokens (
   id uuid primary key default gen_random_uuid(),
   email text not null,
@@ -102,14 +102,15 @@ create table if not exists login_tokens (
 );
 
 -- Heals schema drift: adds any columns older deployments of this file were missing.
-alter table companies add column if not exists name text;
-alter table companies add column if not exists slug text;
-alter table companies add column if not exists region text;
-alter table companies add column if not exists industry text;
-alter table companies add column if not exists access_status text not null default 'lead';
-alter table companies add column if not exists created_at timestamptz not null default now();
+alter table users add column if not exists company_name text;
+alter table users add column if not exists job_title text;
+alter table users add column if not exists phone text;
+alter table users add column if not exists country text;
+alter table users add column if not exists industry text;
+alter table users add column if not exists archetype text;
+alter table users add column if not exists status text;
 
-alter table enquiries add column if not exists company_id uuid references companies(id) on delete set null;
+alter table enquiries add column if not exists user_id uuid references users(id) on delete set null;
 alter table enquiries add column if not exists first_name text;
 alter table enquiries add column if not exists last_name text;
 alter table enquiries add column if not exists company text;
@@ -120,7 +121,7 @@ alter table enquiries add column if not exists message text;
 alter table enquiries add column if not exists status text not null default 'new';
 alter table enquiries add column if not exists created_at timestamptz not null default now();
 
-alter table projects add column if not exists company_id uuid references companies(id) on delete cascade;
+alter table projects add column if not exists user_id uuid references users(id) on delete cascade;
 alter table projects add column if not exists enquiry_id uuid references enquiries(id) on delete set null;
 alter table projects add column if not exists name text;
 alter table projects add column if not exists polymer text;
@@ -144,22 +145,14 @@ alter table project_updates add column if not exists body text;
 alter table project_updates add column if not exists created_by text not null default 'admin';
 alter table project_updates add column if not exists created_at timestamptz not null default now();
 
-alter table users add column if not exists company_name text;
-alter table users add column if not exists job_title text;
-alter table users add column if not exists phone text;
-alter table users add column if not exists country text;
-alter table users add column if not exists industry text;
-alter table users add column if not exists archetype text;
-
 create index if not exists users_email_idx on users(lower(email));
 create index if not exists enquiries_email_idx on enquiries(lower(email));
-create index if not exists projects_company_idx on projects(company_id);
+create index if not exists projects_user_idx on projects(user_id);
 create index if not exists sample_requests_project_idx on sample_requests(project_id);
 create index if not exists project_updates_project_idx on project_updates(project_id);
 create index if not exists login_tokens_token_idx on login_tokens(token);
 create index if not exists login_tokens_expires_idx on login_tokens(expires_at);
 
-alter table companies enable row level security;
 alter table enquiries enable row level security;
 alter table projects enable row level security;
 alter table sample_requests enable row level security;
@@ -168,7 +161,6 @@ alter table project_updates enable row level security;
 alter table users enable row level security;
 alter table login_tokens enable row level security;
 
-drop policy if exists "service role manages companies" on companies;
 drop policy if exists "service role manages enquiries" on enquiries;
 drop policy if exists "service role manages projects" on projects;
 drop policy if exists "service role manages sample requests" on sample_requests;
@@ -176,9 +168,6 @@ drop policy if exists "service role manages project documents" on project_docume
 drop policy if exists "service role manages project updates" on project_updates;
 drop policy if exists "service role manages users" on users;
 drop policy if exists "service role manages login tokens" on login_tokens;
-
-create policy "service role manages companies" on companies
-  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
 create policy "service role manages enquiries" on enquiries
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');

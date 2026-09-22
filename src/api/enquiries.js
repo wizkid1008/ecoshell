@@ -26,37 +26,37 @@ export async function enquiriesCreate({request, env}) {
   }
 
   try {
-    const companySlug = enquiry.company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const companies = await supabaseFetch(env, `companies?slug=eq.${encodeURIComponent(companySlug)}&select=id`, {
-      headers: {prefer: 'return=representation'}
-    });
+    const existing = await supabaseFetch(env, `users?email=eq.${encodeURIComponent(enquiry.email)}&select=id`);
+    let userId = existing[0]?.id;
 
-    let companyId = companies[0]?.id;
-    if (!companyId) {
-      const inserted = await supabaseFetch(env, 'companies?select=id', {
+    if (!userId) {
+      const name = [enquiry.first_name, enquiry.last_name].filter(Boolean).join(' ');
+      const inserted = await supabaseFetch(env, 'users?select=id', {
         method: 'POST',
         headers: {prefer: 'return=representation'},
         body: JSON.stringify({
-          name: enquiry.company,
-          slug: companySlug,
-          region: enquiry.country,
-          access_status: 'lead'
+          email: enquiry.email,
+          role: 'member',
+          status: 'lead',
+          name: name || null,
+          company_name: enquiry.company,
+          country: enquiry.country || null
         })
       });
-      companyId = inserted[0].id;
+      userId = inserted[0].id;
     }
 
     const insertedEnquiry = await supabaseFetch(env, 'enquiries?select=id', {
       method: 'POST',
       headers: {prefer: 'return=representation'},
-      body: JSON.stringify({...enquiry, company_id: companyId, status: 'new'})
+      body: JSON.stringify({...enquiry, user_id: userId, status: 'new'})
     });
 
     const project = await supabaseFetch(env, 'projects?select=id,reference_code', {
       method: 'POST',
       headers: {prefer: 'return=representation'},
       body: JSON.stringify({
-        company_id: companyId,
+        user_id: userId,
         enquiry_id: insertedEnquiry[0].id,
         name: `${enquiry.application || 'Material'} review for ${enquiry.company}`,
         polymer: null,
