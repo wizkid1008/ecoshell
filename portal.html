@@ -88,7 +88,12 @@
           </div>
           <div class="frow">
             <div class="field"><label for="acctPhone">Phone</label><input id="acctPhone" name="phone" type="tel" autocomplete="tel"></div>
-            <div class="field"><label for="acctCountry">Country</label><input id="acctCountry" name="country" type="text" autocomplete="country-name"></div>
+            <div class="field">
+              <label for="acctCountry">Country</label>
+              <select id="acctCountry" name="country" autocomplete="country-name">
+                <option value="">Select a country</option>
+              </select>
+            </div>
           </div>
           <div class="frow" id="acctClientRow2">
             <div class="field">

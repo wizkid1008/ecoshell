@@ -5,6 +5,7 @@ import {adminProjectsUpdate} from './api/adminProjects.js';
 import {login} from './api/login.js';
 import {clientProjects} from './api/clientProjects.js';
 import {profileGet, profileUpdate} from './api/profile.js';
+import {countriesList} from './api/countries.js';
 
 const routes = [
   {method: 'POST', path: '/api/enquiries', handler: enquiriesCreate},
@@ -13,7 +14,8 @@ const routes = [
   {method: 'POST', path: '/api/login', handler: login},
   {method: 'GET', path: '/api/client/projects', handler: clientProjects},
   {method: 'GET', path: '/api/profile', handler: profileGet},
-  {method: 'PATCH', path: '/api/profile', handler: profileUpdate}
+  {method: 'PATCH', path: '/api/profile', handler: profileUpdate},
+  {method: 'GET', path: '/api/countries', handler: countriesList}
 ];
 
 export default {

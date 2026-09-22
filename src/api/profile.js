@@ -54,6 +54,11 @@ export async function profileUpdate({request, env}) {
   });
 
   try {
+    if (update.country) {
+      const matches = await supabaseFetch(env, `countries?name=eq.${encodeURIComponent(update.country)}&select=name`);
+      if (!matches.length) return json({error: 'Invalid country.'}, {status: 400});
+    }
+
     const rows = await supabaseFetch(env, `users?email=eq.${encodeURIComponent(user.email)}&select=${PROFILE_FIELDS}`, {
       method: 'PATCH',
       headers: {prefer: 'return=representation'},

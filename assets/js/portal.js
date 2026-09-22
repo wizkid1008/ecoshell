@@ -301,12 +301,38 @@
       });
   }
 
+  var countriesCache = null;
+
+  function ensureCountries(){
+    if(countriesCache) return Promise.resolve(countriesCache);
+    return fetch('/api/countries')
+      .then(function(res){ return res.json(); })
+      .then(function(body){
+        countriesCache = body.countries || [];
+        var select = document.getElementById('acctCountry');
+        countriesCache.forEach(function(name){
+          var option = document.createElement('option');
+          option.value = name;
+          option.textContent = name;
+          select.appendChild(option);
+        });
+        return countriesCache;
+      })
+      .catch(function(){ return []; });
+  }
+
   function loadAccountForm(){
     setAccountStatus('Loading account...', false);
     accountForm.acctEmailInput = document.getElementById('acctEmail');
-    fetch('/api/profile', {headers: {'x-session': state.sessionToken}})
-      .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
-      .then(function(result){
+
+    Promise.all([
+      ensureCountries(),
+      fetch('/api/profile', {headers: {'x-session': state.sessionToken}}).then(function(res){
+        return res.json().then(function(body){ return {ok: res.ok, body: body}; });
+      })
+    ])
+      .then(function(results){
+        var result = results[1];
         if(!result.ok){
           setAccountStatus(result.body.error || 'Could not load account.', true);
           return;

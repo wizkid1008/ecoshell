@@ -74,9 +74,12 @@ Backend files:
   (requires `role: admin`).
 - `src/api/profile.js` returns/updates the signed-in user's own profile
   (name, phone, country; members also get company name, job title, industry
-  and archetype). The admin dashboard's Clients tab reads this same data
+  and archetype). Country is validated against the `countries` table, not a
+  fixed in-code list. The admin dashboard's Clients tab reads this same data
   across every `role: member` account, with By archetype / By industry
   breakdown counts and a status pill per row.
+- `src/api/countries.js` returns the full `countries` table (public, no
+  session required) — used to populate the Account form's Country dropdown.
 - `src/lib/supabase.js` shared Supabase REST helpers.
 - `src/lib/password.js` PBKDF2 password hashing/verification.
 - `src/lib/auth.js` resolves a session token to its `users` row (id, email,
