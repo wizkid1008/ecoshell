@@ -31,71 +31,125 @@ Then open http://localhost:8791.
 
 The site is a single Cloudflare Worker (`src/index.js`) that serves the static
 pages via the Workers Static Assets binding and handles `/api/*` routes
-directly. The contact form submits to `/api/enquiries`, which finds or
-creates a `users` row for that email (a "lead" with no password), stores the
-enquiry, opens a project tied to that user and adds the first client-visible
-update. There is no separate `companies` table — a company/lead is just a
-`users` row that hasn't signed in yet.
+directly. The public site (`index.html`, `solutions.html`, etc.) is untouched
+by any of this — only the contact form and the portal (`portal.html`) talk to
+the backend.
 
-One portal page (`portal.html`), one sign-in form, one `users` table for
-everyone, using plain email + password login (no email sending involved —
-logging in is instant):
+One portal page, one sign-in form, using plain email + password login (no
+email sending involved — logging in is instant):
 
 - `users.role` controls access: `admin` or `member` (staff vs. everyone
   else). `users.status` tracks the business relationship, independent of
   access: `lead` (enquired, no login yet) → `contact` (has portal access) →
-  `client` (running active projects — set by an admin, no UI for this yet).
+  `client` (running active opportunities — set by an admin; no dedicated UI
+  for that promotion yet, update the row directly).
 - Submitting the login form calls `/api/login`. If the email already exists,
   it verifies the password (or, if that row has no password yet — a seeded
   admin or an enquiry-created lead — claims it, bumping `lead` to `contact`
   on claim); if the email is new, it creates a fresh `role: member,
-  status: contact` account. The response's `role` field tells the frontend
-  which dashboard to render — admin sidebar (Enquiries, Projects, Samples,
-  Clients) or member dashboard (that account's projects, sample status and
-  updates, empty if none exist yet).
+  status: contact` account. The response's `role` tells the frontend which
+  dashboard to render.
 - Admins are provisioned by inserting a row into `users` with `role: admin`
   and no `password_hash` (see the seed at the bottom of `schema.sql`) — their
   first sign-in sets the password.
 - `admin.html` is kept only as a redirect to `portal.html` for old bookmarks.
 
+## CRM pipeline / workflow
+
+Website enquiries and the admin portal share one data model, built around a
+company, its contacts, and each opportunity between them:
+
+- **`companies`** — one row per company. Enquiries and the Account profile
+  form both find-or-create a company by name (`src/lib/companies.js`) rather
+  than duplicating it per contact.
+- **`users`** — contacts *and* login accounts in one table (`company_id`
+  links a contact to its company). A contact doesn't need a password to
+  exist — an enquiry creates one with `status: lead`.
+- **`projects`** — the opportunity. Belongs to a `company_id` (so every
+  contact at that company sees it), a `contact_id` (who it originated from)
+  and an `owner_id` (the assigned admin). `status` holds the pipeline stage,
+  validated against `src/lib/pipeline.js`'s fixed list rather than a DB
+  constraint, so adding a stage later is a code change, not a migration:
+  `new_inquiry` → `qualified_lead` → `technical_review` →
+  `nda_documentation` → `sample_pilot_request` → `pilot_in_progress` →
+  `pilot_complete` → `commercial_proposal` → `contract_negotiation` →
+  `commercial_customer`, with `closed_not_fit` / `closed_lost` as terminal
+  stages from any point.
+- **`sample_requests`**, **`pilots`** (+ **`pilot_results`**),
+  **`proposals`**, **`contracts`** — one-to-many child records per
+  opportunity, each created via its own admin endpoint
+  (`src/api/adminRecords.js`) rather than edited in place, so they read as a
+  history (e.g. re-shipping a sample adds a new row instead of overwriting
+  the last one).
+- **`project_documents`** — linked files/URLs per opportunity, each flagged
+  `visibility: client` or `visibility: internal`. Only `client` documents
+  are ever returned by the client-facing endpoint.
+- **`project_updates`** — the client-visible log (shown in the client
+  portal). Written by the system on enquiry and by admins via the opportunity
+  detail view.
+- **`internal_notes`** — admin-only notes. Never selected by
+  `src/api/clientProjects.js` or any client-facing response — there's no
+  code path that could leak one to a client account.
+
+**Admin workflow**: Opportunities tab → click a card → detail view with the
+pipeline-stage and owner dropdowns, and one section each for samples, pilot
+(+ results), proposal, contract, documents, client-visible updates and
+internal notes. The Clients tab lists every contact (`role: member`) with a
+status pill and By-archetype / By-industry breakdown counts.
+
+**Client workflow**: sign in → see every opportunity for your company (not
+just ones you personally started) — stage, sample/pilot progress, proposal
+and contract status, the latest client-visible updates, and any documents
+shared with you. Internal notes and other companies' opportunities are never
+visible.
+
 Backend files:
 
 - `src/index.js` routes incoming requests to the right handler or falls back
   to static asset serving.
-- `src/api/enquiries.js` handles website enquiries, finding/creating the
-  submitter's `users` row by email.
+- `src/api/enquiries.js` finds/creates the company and contact for an
+  enquiry, then opens a new opportunity every time (each enquiry is treated
+  as a new pipeline entry).
 - `src/api/login.js` authenticates or creates/claims a `users` row and issues
   a session token, returning that account's role and status.
-- `src/api/clientProjects.js` returns projects for the logged-in session's
-  `user_id`.
-- `src/api/adminOverview.js` returns the admin dashboard data (requires
-  `role: admin`).
-- `src/api/adminProjects.js` updates project status and client updates
-  (requires `role: admin`).
+- `src/api/clientProjects.js` returns every opportunity for the logged-in
+  contact's company, with samples/pilots/proposals/contracts/client-visible
+  documents/updates joined in.
+- `src/api/adminOverview.js` returns the admin dashboard data — enquiries,
+  opportunities, samples, pilots, proposals, contracts, clients, companies
+  and the admin list (for owner assignment). Requires `role: admin`.
+- `src/api/adminOpportunity.js` returns the full detail bundle for one
+  opportunity (used by the detail view). Requires `role: admin`.
+- `src/api/adminProjects.js` updates an opportunity's stage/owner/material
+  fields, and can post a client-visible update and/or an internal note in
+  the same call. Requires `role: admin`.
+- `src/api/adminRecords.js` records a sample, pilot, pilot result, proposal,
+  contract or document against an opportunity. Requires `role: admin`.
 - `src/api/profile.js` returns/updates the signed-in user's own profile
   (name, phone, country; members also get company name, job title, industry
-  and archetype). Country is validated against the `countries` table, not a
-  fixed in-code list. The admin dashboard's Clients tab reads this same data
-  across every `role: member` account, with By archetype / By industry
-  breakdown counts and a status pill per row.
+  and archetype). Saving a company name finds-or-creates that company and
+  links it. Country is validated against the `countries` table.
 - `src/api/countries.js` returns the full `countries` table (public, no
   session required) — used to populate the Account form's Country dropdown.
 - `src/lib/supabase.js` shared Supabase REST helpers.
 - `src/lib/password.js` PBKDF2 password hashing/verification.
 - `src/lib/auth.js` resolves a session token to its `users` row (id, email,
-  role, status).
-- `supabase/schema.sql` defines the prototype database tables and RLS
-  policies (including a one-time `drop table` cleanup of the old split
-  admin/client/companies tables) and seeds admin users (password unset until
-  each one's first sign-in).
+  role, status, company_id).
+- `src/lib/companies.js` finds a company by name (case-insensitive) or
+  creates it.
+- `src/lib/pipeline.js` the fixed list of pipeline stage slugs.
+- `supabase/schema.sql` defines every table, RLS policy and seed (including
+  a one-time `drop table` cleanup of the old split admin/client tables) and
+  seeds admin users (password unset until each one's first sign-in).
 
 Required Cloudflare environment variables:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-The portal pages include demo fallback data so the prototype can be explored
-before the Cloudflare/Supabase environment variables are connected.
+The portal pages include demo fallback data (a full opportunity with a
+sample, pilot, company and client) so the prototype can be explored before
+the Cloudflare/Supabase environment variables are connected.
 
 ## Deployment
 

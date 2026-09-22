@@ -13,6 +13,6 @@ export async function resolveSession(request, env) {
   const session = sessions[0];
   if (!session) return null;
 
-  const users = await supabaseFetch(env, `users?email=eq.${encodeURIComponent(session.email)}&select=id,email,role,status`);
+  const users = await supabaseFetch(env, `users?email=eq.${encodeURIComponent(session.email)}&select=id,email,role,status,company_id`);
   return users[0] || null;
 }

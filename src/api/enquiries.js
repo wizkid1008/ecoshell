@@ -1,4 +1,5 @@
 import {cleanString, json, requireEnv, supabaseFetch} from '../lib/supabase.js';
+import {findOrCreateCompany} from '../lib/companies.js';
 
 export async function enquiriesCreate({request, env}) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']);
@@ -26,7 +27,9 @@ export async function enquiriesCreate({request, env}) {
   }
 
   try {
-    const existing = await supabaseFetch(env, `users?email=eq.${encodeURIComponent(enquiry.email)}&select=id`);
+    const companyId = await findOrCreateCompany(env, enquiry.company, {country: enquiry.country || null});
+
+    const existing = await supabaseFetch(env, `users?email=eq.${encodeURIComponent(enquiry.email)}&select=id,company_id`);
     let userId = existing[0]?.id;
 
     if (!userId) {
@@ -39,24 +42,32 @@ export async function enquiriesCreate({request, env}) {
           role: 'member',
           status: 'lead',
           name: name || null,
+          company_id: companyId,
           company_name: enquiry.company,
           country: enquiry.country || null
         })
       });
       userId = inserted[0].id;
+    } else if (!existing[0].company_id) {
+      // Existing contact with no company linked yet (e.g. self-signed-up before enquiring) -- link them now.
+      await supabaseFetch(env, `users?id=eq.${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({company_id: companyId, company_name: enquiry.company})
+      });
     }
 
     const insertedEnquiry = await supabaseFetch(env, 'enquiries?select=id', {
       method: 'POST',
       headers: {prefer: 'return=representation'},
-      body: JSON.stringify({...enquiry, user_id: userId, status: 'new'})
+      body: JSON.stringify({...enquiry, user_id: userId, company_id: companyId, status: 'new'})
     });
 
     const project = await supabaseFetch(env, 'projects?select=id,reference_code', {
       method: 'POST',
       headers: {prefer: 'return=representation'},
       body: JSON.stringify({
-        user_id: userId,
+        company_id: companyId,
+        contact_id: userId,
         enquiry_id: insertedEnquiry[0].id,
         name: `${enquiry.application || 'Material'} review for ${enquiry.company}`,
         polymer: null,

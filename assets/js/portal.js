@@ -25,7 +25,22 @@
   var ROLE_KEY = 'ecoshell_role';
   var STATUS_KEY = 'ecoshell_status';
 
-  var state = {role: null, status: null, sessionToken: null, view: 'dashboard', data: null, profile: null};
+  var state = {role: null, status: null, sessionToken: null, view: 'dashboard', data: null, profile: null, opportunity: null};
+
+  var STAGES = [
+    ['new_inquiry', 'New inquiry'],
+    ['qualified_lead', 'Qualified lead'],
+    ['technical_review', 'Technical review'],
+    ['nda_documentation', 'NDA / documentation'],
+    ['sample_pilot_request', 'Sample or pilot request'],
+    ['pilot_in_progress', 'Pilot in progress'],
+    ['pilot_complete', 'Pilot complete'],
+    ['commercial_proposal', 'Commercial proposal'],
+    ['contract_negotiation', 'Contract negotiation'],
+    ['commercial_customer', 'Commercial customer'],
+    ['closed_not_fit', 'Closed not fit'],
+    ['closed_lost', 'Closed lost']
+  ];
 
   var ICON_DASHBOARD = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>';
   var ICON_ENQUIRIES = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
@@ -44,7 +59,7 @@
 
   var ADMIN_NAV = '<p class="app-nav__label">Workspace</p>' +
     navItem('enquiries', ICON_ENQUIRIES, 'Enquiries') +
-    navItem('projects', ICON_PROJECTS, 'Projects') +
+    navItem('projects', ICON_PROJECTS, 'Opportunities') +
     navItem('samples', ICON_SAMPLES, 'Samples') +
     navItem('clients', ICON_CLIENTS, 'Clients') +
     navItem('account', ICON_ACCOUNT, 'Account');
@@ -54,14 +69,18 @@
       {
         reference_code: 'ECO-8A41C2F0',
         name: 'Injection moulded closure review',
-        status: 'technical_review',
+        status: 'pilot_in_progress',
         polymer: 'PP',
         process: 'Injection moulding',
         target: 'Reduce virgin plastic while keeping stiffness and food-contact readiness.',
-        users: {company_name: 'Demo Packaging Co.'},
-        sample_requests: [{status: 'preparing', tracking_number: null}],
+        companies: {name: 'Demo Packaging Co.'},
+        sample_requests: [{status: 'delivered', tracking_number: '1Z-DEMO-9241'}],
+        pilots: [{status: 'in_progress', success_criteria: 'Match incumbent stiffness within 5%.', start_date: '2026-08-01', end_date: null, pilot_results: []}],
+        proposals: [],
+        contracts: [],
+        project_documents: [{title: 'Technical data sheet', url: '#', visibility: 'client'}],
         project_updates: [
-          {body: 'Technical review is underway. Ecoshell is checking process fit and likely loading range.', created_at: new Date().toISOString()},
+          {body: 'Pilot trial is underway on your line. Ecoshell is monitoring loading range and cycle time.', created_at: new Date().toISOString()},
           {body: 'Initial inquiry received and converted into a project.', created_at: new Date(Date.now() - 86400000).toISOString()}
         ]
       }
@@ -70,9 +89,14 @@
 
   var adminDemo = {
     enquiries: [{first_name: 'Maya', last_name: 'Singh', company: 'Demo Packaging Co.', email: 'maya@example.com', country: 'United States', application: 'Injection moulding', message: 'Looking for a lower-plastic closure compound.', status: 'new'}],
-    projects: [{id: 'demo-1', reference_code: 'ECO-8A41C2F0', name: 'Injection moulded closure review', status: 'technical_review', polymer: 'PP', process: 'Injection moulding', users: {company_name: 'Demo Packaging Co.'}}],
-    samples: [{status: 'preparing', tracking_number: '', projects: {reference_code: 'ECO-8A41C2F0', name: 'Injection moulded closure review', users: {company_name: 'Demo Packaging Co.'}}}],
-    clients: [{email: 'maya@example.com', name: 'Maya Singh', status: 'contact', company_name: 'Demo Packaging Co.', job_title: 'Procurement', phone: '', country: 'United States', industry: 'Food and Agri', archetype: 'Emerging Brand'}]
+    projects: [{id: 'demo-1', reference_code: 'ECO-8A41C2F0', name: 'Injection moulded closure review', status: 'pilot_in_progress', polymer: 'PP', process: 'Injection moulding', companies: {name: 'Demo Packaging Co.'}, owner: {name: 'Kyle Newell', email: 'kyle@ecoshell.eco'}, contact: {name: 'Maya Singh', email: 'maya@example.com'}}],
+    samples: [{status: 'delivered', tracking_number: '1Z-DEMO-9241', projects: {reference_code: 'ECO-8A41C2F0', name: 'Injection moulded closure review', companies: {name: 'Demo Packaging Co.'}}}],
+    pilots: [{status: 'in_progress', success_criteria: 'Match incumbent stiffness within 5%.', projects: {reference_code: 'ECO-8A41C2F0', name: 'Injection moulded closure review', companies: {name: 'Demo Packaging Co.'}}}],
+    proposals: [],
+    contracts: [],
+    clients: [{email: 'maya@example.com', name: 'Maya Singh', status: 'contact', company_name: 'Demo Packaging Co.', job_title: 'Procurement', phone: '', country: 'United States', industry: 'Food and Agri', archetype: 'Emerging Brand'}],
+    admins: [{id: 'demo-admin', name: 'Kyle Newell', email: 'kyle@ecoshell.eco'}],
+    companies: [{id: 'demo-co', name: 'Demo Packaging Co.', industry: 'Food and Agri', archetype: 'Emerging Brand', country: 'United States'}]
   };
 
   function labelStatus(status){
@@ -109,6 +133,24 @@
     });
   }
 
+  function apiFetch(url, options){
+    options = options || {};
+    options.headers = Object.assign({'x-session': state.sessionToken}, options.headers || {});
+    return fetch(url, options).then(function(res){
+      return res.json()
+        .catch(function(){ return {}; })
+        .then(function(body){ return {ok: res.ok, status: res.status, body: body}; });
+    });
+  }
+
+  function postJSON(url, data){
+    return apiFetch(url, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(data)});
+  }
+
+  function patchJSON(url, data){
+    return apiFetch(url, {method: 'PATCH', headers: {'content-type': 'application/json'}, body: JSON.stringify(data)});
+  }
+
   function enterDashboard(role, email, status){
     authSection.hidden = true;
     dashboardSection.hidden = false;
@@ -122,6 +164,7 @@
     appNav.querySelectorAll('.app-nav__item[data-view]').forEach(function(tab){
       tab.addEventListener('click', function(){
         state.view = tab.dataset.view;
+        state.opportunity = null;
         setActiveNav(state.view);
         renderCurrentView();
       });
@@ -154,12 +197,25 @@
         return '<li>' + esc(update.body) + '</li>';
       }).join('');
       var sample = (project.sample_requests || [])[0];
+      var pilot = (project.pilots || [])[0];
+      var proposal = (project.proposals || [])[0];
+      var contract = (project.contracts || [])[0];
+      var documents = (project.project_documents || []).filter(function(d){ return d.visibility === 'client'; });
+
+      var docsHtml = documents.length
+        ? '<ul class="portal-updates">' + documents.map(function(d){ return '<li><a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(d.title) + '</a></li>'; }).join('') + '</ul>'
+        : '<p class="portal-note">No shared documents yet.</p>';
+
       return '<article class="portal-card">' +
         '<div class="portal-card__top"><div><p class="portal-ref">' + esc(project.reference_code) + '</p><h2>' + esc(project.name) + '</h2></div><span class="pill">' + esc(labelStatus(project.status)) + '</span></div>' +
-        '<dl class="portal-meta"><div><dt>Company</dt><dd>' + esc(project.users?.company_name || 'Client company') + '</dd></div><div><dt>Polymer</dt><dd>' + esc(project.polymer || 'Review needed') + '</dd></div><div><dt>Process</dt><dd>' + esc(project.process || 'Review needed') + '</dd></div></dl>' +
+        '<dl class="portal-meta"><div><dt>Company</dt><dd>' + esc(project.companies?.name || 'Client company') + '</dd></div><div><dt>Polymer</dt><dd>' + esc(project.polymer || 'Review needed') + '</dd></div><div><dt>Process</dt><dd>' + esc(project.process || 'Review needed') + '</dd></div></dl>' +
         '<p>' + esc(project.target || 'No project target has been added yet.') + '</p>' +
-        (sample ? '<p class="portal-note">Sample: ' + esc(labelStatus(sample.status)) + (sample.tracking_number ? ' · Tracking ' + esc(sample.tracking_number) : '') + '</p>' : '<p class="portal-note">No sample request yet.</p>') +
-        '<h3>Latest updates</h3><ul class="portal-updates">' + updates + '</ul>' +
+        (sample ? '<p class="portal-note">Sample: ' + esc(labelStatus(sample.status)) + (sample.tracking_number ? ' · Tracking ' + esc(sample.tracking_number) : '') + '</p>' : '') +
+        (pilot ? '<p class="portal-note">Pilot: ' + esc(labelStatus(pilot.status)) + (pilot.success_criteria ? ' — ' + esc(pilot.success_criteria) : '') + '</p>' : '') +
+        (proposal ? '<p class="portal-note">Proposal: ' + esc(labelStatus(proposal.status)) + '</p>' : '') +
+        (contract ? '<p class="portal-note">Contract: ' + esc(labelStatus(contract.status)) + '</p>' : '') +
+        '<h3>Latest updates</h3><ul class="portal-updates">' + (updates || '<li>No updates yet.</li>') + '</ul>' +
+        '<h3>Documents</h3>' + docsHtml +
       '</article>';
     }).join('');
   }
@@ -201,7 +257,7 @@
   function renderAdminKpis(data){
     kpis.innerHTML = [
       '<article><b>' + data.enquiries.length + '</b><span>Enquiries</span></article>',
-      '<article><b>' + data.projects.length + '</b><span>Projects</span></article>',
+      '<article><b>' + data.projects.length + '</b><span>Opportunities</span></article>',
       '<article><b>' + data.samples.length + '</b><span>Samples</span></article>',
       '<article><b>' + data.clients.length + '</b><span>Clients</span></article>'
     ].join('');
@@ -258,18 +314,272 @@
     }
     if(state.view === 'projects'){
       list.innerHTML = data.projects.map(function(item){
-        return adminCard(item.name, item.reference_code + ' · ' + (item.users?.company_name || 'Company'), (item.polymer || 'Polymer TBD') + ' · ' + (item.process || 'Process TBD'), item.status);
+        var meta = item.reference_code + ' · ' + (item.companies?.name || 'Company');
+        var body = 'Owner: ' + (item.owner ? (item.owner.name || item.owner.email) : 'Unassigned') +
+          ' · Contact: ' + (item.contact ? (item.contact.name || item.contact.email) : 'No contact');
+        return '<div class="opportunity-row" data-open-project="' + esc(item.id) + '">' + adminCard(item.name, meta, body, item.status) + '</div>';
       }).join('');
+      list.querySelectorAll('[data-open-project]').forEach(function(el){
+        el.addEventListener('click', function(){ openOpportunity(el.getAttribute('data-open-project')); });
+      });
     }
     if(state.view === 'samples'){
       list.innerHTML = data.samples.map(function(item){
         var project = item.projects || {};
-        return adminCard(project.name || 'Sample request', (project.reference_code || 'Project') + ' · ' + (project.users?.company_name || 'Company'), item.tracking_number ? 'Tracking: ' + item.tracking_number : 'No tracking number yet.', item.status);
+        return adminCard(project.name || 'Sample request', (project.reference_code || 'Project') + ' · ' + (project.companies?.name || 'Company'), item.tracking_number ? 'Tracking: ' + item.tracking_number : 'No tracking number yet.', item.status);
       }).join('');
     }
     if(state.view === 'clients'){
       renderClientsView(data);
     }
+  }
+
+  function stageOptions(selected){
+    return STAGES.map(function(pair){
+      return '<option value="' + pair[0] + '"' + (pair[0] === selected ? ' selected' : '') + '>' + esc(pair[1]) + '</option>';
+    }).join('');
+  }
+
+  function backToOpportunities(){
+    kpis.hidden = false;
+    state.opportunity = null;
+    state.view = 'projects';
+    setActiveNav('projects');
+    renderAdminList();
+  }
+
+  function openOpportunity(id){
+    kpis.hidden = true;
+    list.innerHTML = '<article class="portal-card"><p>Loading opportunity...</p></article>';
+    apiFetch('/api/admin/opportunity?id=' + encodeURIComponent(id))
+      .then(function(result){
+        if(!result.ok){
+          list.innerHTML = '<article class="portal-card"><h2>Unable to load opportunity</h2><p>' + esc(result.body.error || 'Please try again.') + '</p><button type="button" class="btn" id="oppBackBtnErr">Back to opportunities</button></article>';
+          var backBtn = document.getElementById('oppBackBtnErr');
+          if(backBtn) backBtn.addEventListener('click', backToOpportunities);
+          return;
+        }
+        state.opportunity = result.body;
+        renderOpportunityDetail();
+      })
+      .catch(function(){
+        list.innerHTML = '<article class="portal-card"><h2>Unable to load opportunity</h2><p>Check your connection and try again.</p></article>';
+      });
+  }
+
+  function renderOpportunityDetail(){
+    var data = state.opportunity;
+    var project = data.project;
+    var admins = (state.data && state.data.admins) || [];
+
+    var ownerOptions = '<option value="">Unassigned</option>' + admins.map(function(a){
+      return '<option value="' + esc(a.id) + '"' + (project.owner && project.owner.email === a.email ? ' selected' : '') + '>' + esc(a.name || a.email) + '</option>';
+    }).join('');
+
+    var samplesHtml = (data.samples || []).map(function(s){
+      return '<p class="portal-note">' + esc(labelStatus(s.status)) + (s.tracking_number ? ' · Tracking ' + esc(s.tracking_number) : '') + (s.shipping_name ? ' · ' + esc(s.shipping_name) : '') + '</p>';
+    }).join('') || '<p class="portal-note">No sample requests yet.</p>';
+
+    var pilotsHtml = (data.pilots || []).map(function(p){
+      var results = (p.pilot_results || []).map(function(r){
+        return '<li>' + (r.outcome ? esc(r.outcome.toUpperCase()) + ' — ' : '') + esc(r.summary) + '</li>';
+      }).join('');
+      return '<div class="portal-note"><b>' + esc(labelStatus(p.status)) + '</b>' + (p.success_criteria ? ' — ' + esc(p.success_criteria) : '') +
+        (p.start_date || p.end_date ? ' (' + esc(p.start_date || '?') + ' to ' + esc(p.end_date || '?') + ')' : '') +
+        (results ? '<ul class="portal-updates">' + results + '</ul>' : '') + '</div>';
+    }).join('') || '<p class="portal-note">No pilots yet.</p>';
+
+    var proposalsHtml = (data.proposals || []).map(function(p){
+      return '<p class="portal-note">' + esc(labelStatus(p.status)) + (p.amount ? ' · ' + esc(p.currency || 'USD') + ' ' + esc(p.amount) : '') + '</p>';
+    }).join('') || '<p class="portal-note">No proposals yet.</p>';
+
+    var contractsHtml = (data.contracts || []).map(function(c){
+      return '<p class="portal-note">' + esc(labelStatus(c.status)) + (c.value ? ' · ' + esc(c.currency || 'USD') + ' ' + esc(c.value) : '') + '</p>';
+    }).join('') || '<p class="portal-note">No contracts yet.</p>';
+
+    var documentsHtml = (data.documents || []).map(function(d){
+      return '<li><a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(d.title) + '</a> · ' + esc(labelStatus(d.visibility)) + (d.document_type ? ' · ' + esc(d.document_type) : '') + '</li>';
+    }).join('') || '<li>No documents yet.</li>';
+
+    var updatesHtml = (data.updates || []).map(function(u){
+      return '<li>' + esc(u.body) + '</li>';
+    }).join('') || '<li>No client updates yet.</li>';
+
+    var notesHtml = (data.notes || []).map(function(n){
+      return '<div class="internal-note">' + esc(n.body) + ' <span class="portal-ref">— ' + esc(n.created_by) + '</span></div>';
+    }).join('') || '<p class="portal-note">No internal notes yet.</p>';
+
+    list.innerHTML =
+      '<button type="button" class="btn" id="oppBackBtn">Back to opportunities</button>' +
+      '<article class="portal-card">' +
+        '<div class="portal-card__top"><div><p class="portal-ref">' + esc(project.reference_code) + '</p><h2>' + esc(project.name) + '</h2></div><span class="pill">' + esc(labelStatus(project.status)) + '</span></div>' +
+        '<dl class="portal-meta"><div><dt>Company</dt><dd>' + esc(project.companies?.name || 'Company') + '</dd></div><div><dt>Contact</dt><dd>' + esc(project.contact?.name || project.contact?.email || 'No contact') + '</dd></div><div><dt>Owner</dt><dd>' + esc(project.owner?.name || project.owner?.email || 'Unassigned') + '</dd></div></dl>' +
+        '<div class="frow">' +
+          '<div class="field"><label for="oppStageSelect">Pipeline stage</label><select id="oppStageSelect">' + stageOptions(project.status) + '</select></div>' +
+          '<div class="field"><label for="oppOwnerSelect">Owner</label><select id="oppOwnerSelect">' + ownerOptions + '</select></div>' +
+        '</div>' +
+        '<button type="button" class="btn btn--solid" id="oppSaveBtn">Save stage / owner</button>' +
+        '<p class="portal-status" id="oppSaveStatus"></p>' +
+      '</article>' +
+
+      '<article class="portal-card"><h3>Samples</h3>' + samplesHtml +
+        '<div class="frow">' +
+          '<div class="field"><label for="sampleShippingName">Shipping name</label><input id="sampleShippingName"></div>' +
+          '<div class="field"><label for="sampleTracking">Tracking number</label><input id="sampleTracking"></div>' +
+        '</div>' +
+        '<div class="field"><label for="sampleStatus">Status</label><select id="sampleStatus"><option value="requested">Requested</option><option value="preparing">Preparing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option></select></div>' +
+        '<button type="button" class="btn" id="sampleSaveBtn">Record sample</button>' +
+      '</article>' +
+
+      '<article class="portal-card"><h3>Pilot</h3>' + pilotsHtml +
+        '<div class="frow">' +
+          '<div class="field"><label for="pilotCriteria">Success criteria</label><input id="pilotCriteria"></div>' +
+          '<div class="field"><label for="pilotStatus">Status</label><select id="pilotStatus"><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="complete">Complete</option></select></div>' +
+        '</div>' +
+        '<div class="frow">' +
+          '<div class="field"><label for="pilotStart">Start date</label><input type="date" id="pilotStart"></div>' +
+          '<div class="field"><label for="pilotEnd">End date</label><input type="date" id="pilotEnd"></div>' +
+        '</div>' +
+        '<button type="button" class="btn" id="pilotSaveBtn">Record pilot</button>' +
+        (data.pilots && data.pilots.length ? (
+          '<div class="frow" style="margin-top:16px">' +
+            '<div class="field"><label for="pilotResultOutcome">Result outcome (latest pilot)</label><select id="pilotResultOutcome"><option value="">Select outcome</option><option value="pass">Pass</option><option value="partial">Partial</option><option value="fail">Fail</option></select></div>' +
+            '<div class="field"><label for="pilotResultSummary">Summary</label><input id="pilotResultSummary"></div>' +
+          '</div>' +
+          '<button type="button" class="btn" id="pilotResultSaveBtn">Record pilot result</button>'
+        ) : '') +
+      '</article>' +
+
+      '<article class="portal-card"><h3>Proposal</h3>' + proposalsHtml +
+        '<div class="frow">' +
+          '<div class="field"><label for="proposalAmount">Amount</label><input type="number" id="proposalAmount"></div>' +
+          '<div class="field"><label for="proposalCurrency">Currency</label><input id="proposalCurrency" value="USD"></div>' +
+        '</div>' +
+        '<div class="field"><label for="proposalStatus">Status</label><select id="proposalStatus"><option value="draft">Draft</option><option value="sent">Sent</option><option value="accepted">Accepted</option><option value="declined">Declined</option></select></div>' +
+        '<button type="button" class="btn" id="proposalSaveBtn">Record proposal</button>' +
+      '</article>' +
+
+      '<article class="portal-card"><h3>Contract</h3>' + contractsHtml +
+        '<div class="frow">' +
+          '<div class="field"><label for="contractValue">Value</label><input type="number" id="contractValue"></div>' +
+          '<div class="field"><label for="contractCurrency">Currency</label><input id="contractCurrency" value="USD"></div>' +
+        '</div>' +
+        '<div class="field"><label for="contractStatus">Status</label><select id="contractStatus"><option value="pending">Pending</option><option value="signed">Signed</option><option value="active">Active</option><option value="ended">Ended</option></select></div>' +
+        '<button type="button" class="btn" id="contractSaveBtn">Record contract</button>' +
+      '</article>' +
+
+      '<article class="portal-card"><h3>Documents</h3><ul class="portal-updates">' + documentsHtml + '</ul>' +
+        '<div class="frow">' +
+          '<div class="field"><label for="documentTitle">Title</label><input id="documentTitle"></div>' +
+          '<div class="field"><label for="documentUrl">URL</label><input id="documentUrl"></div>' +
+        '</div>' +
+        '<div class="frow">' +
+          '<div class="field"><label for="documentType">Type</label><input id="documentType" placeholder="e.g. spec sheet"></div>' +
+          '<div class="field"><label for="documentVisibility">Visibility</label><select id="documentVisibility"><option value="client">Client-visible</option><option value="internal">Internal only</option></select></div>' +
+        '</div>' +
+        '<button type="button" class="btn" id="documentSaveBtn">Add document</button>' +
+      '</article>' +
+
+      '<article class="portal-card"><h3>Client-visible updates</h3><ul class="portal-updates">' + updatesHtml + '</ul>' +
+        '<div class="field"><label for="clientUpdateBody">New update</label><input id="clientUpdateBody" placeholder="Shown to the client"></div>' +
+        '<button type="button" class="btn" id="clientUpdateSaveBtn">Post client update</button>' +
+      '</article>' +
+
+      '<article class="portal-card"><h3>Internal notes</h3>' + notesHtml +
+        '<div class="field"><label for="internalNoteBody">New note</label><input id="internalNoteBody" placeholder="Admin only, never shown to the client"></div>' +
+        '<button type="button" class="btn" id="internalNoteSaveBtn">Add internal note</button>' +
+      '</article>';
+
+    document.getElementById('oppBackBtn').addEventListener('click', backToOpportunities);
+
+    document.getElementById('oppSaveBtn').addEventListener('click', function(){
+      var saveStatus = document.getElementById('oppSaveStatus');
+      saveStatus.textContent = 'Saving...';
+      saveStatus.classList.remove('is-error');
+      patchJSON('/api/admin/projects', {
+        id: project.id,
+        status: document.getElementById('oppStageSelect').value,
+        owner_id: document.getElementById('oppOwnerSelect').value || null
+      }).then(function(result){
+        if(!result.ok){
+          saveStatus.textContent = result.body.error || 'Could not save.';
+          saveStatus.classList.add('is-error');
+          return;
+        }
+        openOpportunity(project.id);
+      });
+    });
+
+    document.getElementById('sampleSaveBtn').addEventListener('click', function(){
+      postJSON('/api/admin/samples', {
+        project_id: project.id,
+        shipping_name: document.getElementById('sampleShippingName').value,
+        tracking_number: document.getElementById('sampleTracking').value,
+        status: document.getElementById('sampleStatus').value
+      }).then(function(){ openOpportunity(project.id); });
+    });
+
+    document.getElementById('pilotSaveBtn').addEventListener('click', function(){
+      postJSON('/api/admin/pilots', {
+        project_id: project.id,
+        success_criteria: document.getElementById('pilotCriteria').value,
+        status: document.getElementById('pilotStatus').value,
+        start_date: document.getElementById('pilotStart').value || null,
+        end_date: document.getElementById('pilotEnd').value || null
+      }).then(function(){ openOpportunity(project.id); });
+    });
+
+    var pilotResultBtn = document.getElementById('pilotResultSaveBtn');
+    if(pilotResultBtn){
+      pilotResultBtn.addEventListener('click', function(){
+        var latestPilot = data.pilots[0];
+        postJSON('/api/admin/pilot-results', {
+          pilot_id: latestPilot.id,
+          outcome: document.getElementById('pilotResultOutcome').value || null,
+          summary: document.getElementById('pilotResultSummary').value
+        }).then(function(){ openOpportunity(project.id); });
+      });
+    }
+
+    document.getElementById('proposalSaveBtn').addEventListener('click', function(){
+      postJSON('/api/admin/proposals', {
+        project_id: project.id,
+        amount: document.getElementById('proposalAmount').value || null,
+        currency: document.getElementById('proposalCurrency').value || 'USD',
+        status: document.getElementById('proposalStatus').value
+      }).then(function(){ openOpportunity(project.id); });
+    });
+
+    document.getElementById('contractSaveBtn').addEventListener('click', function(){
+      postJSON('/api/admin/contracts', {
+        project_id: project.id,
+        value: document.getElementById('contractValue').value || null,
+        currency: document.getElementById('contractCurrency').value || 'USD',
+        status: document.getElementById('contractStatus').value
+      }).then(function(){ openOpportunity(project.id); });
+    });
+
+    document.getElementById('documentSaveBtn').addEventListener('click', function(){
+      postJSON('/api/admin/documents', {
+        project_id: project.id,
+        title: document.getElementById('documentTitle').value,
+        url: document.getElementById('documentUrl').value,
+        document_type: document.getElementById('documentType').value,
+        visibility: document.getElementById('documentVisibility').value
+      }).then(function(){ openOpportunity(project.id); });
+    });
+
+    document.getElementById('clientUpdateSaveBtn').addEventListener('click', function(){
+      var body = document.getElementById('clientUpdateBody').value;
+      if(!body) return;
+      patchJSON('/api/admin/projects', {id: project.id, client_update: body}).then(function(){ openOpportunity(project.id); });
+    });
+
+    document.getElementById('internalNoteSaveBtn').addEventListener('click', function(){
+      var body = document.getElementById('internalNoteBody').value;
+      if(!body) return;
+      patchJSON('/api/admin/projects', {id: project.id, internal_note: body}).then(function(){ openOpportunity(project.id); });
+    });
   }
 
   function loadAdminDashboard(sessionToken){

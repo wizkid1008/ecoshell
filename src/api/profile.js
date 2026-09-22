@@ -1,5 +1,6 @@
 import {json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 import {resolveSession} from '../lib/auth.js';
+import {findOrCreateCompany} from '../lib/companies.js';
 
 const PROFILE_FIELDS = 'email,name,role,status,company_name,job_title,phone,country,industry,archetype';
 
@@ -57,6 +58,10 @@ export async function profileUpdate({request, env}) {
     if (update.country) {
       const matches = await supabaseFetch(env, `countries?name=eq.${encodeURIComponent(update.country)}&select=name`);
       if (!matches.length) return json({error: 'Invalid country.'}, {status: 400});
+    }
+
+    if (update.company_name) {
+      update.company_id = await findOrCreateCompany(env, update.company_name);
     }
 
     const rows = await supabaseFetch(env, `users?email=eq.${encodeURIComponent(user.email)}&select=${PROFILE_FIELDS}`, {
