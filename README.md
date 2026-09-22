@@ -64,6 +64,11 @@ Backend files:
   `role: admin`).
 - `src/api/adminProjects.js` updates project status and client updates
   (requires `role: admin`).
+- `src/api/profile.js` returns/updates the signed-in user's own profile
+  (name, phone, country; clients also get company name, job title, industry
+  and archetype). The admin dashboard's Clients tab reads this same data
+  across all client accounts, with By archetype / By industry breakdown
+  counts.
 - `src/lib/supabase.js` shared Supabase REST helpers.
 - `src/lib/password.js` PBKDF2 password hashing/verification.
 - `src/lib/auth.js` resolves a session token to its `users` row (email + role).

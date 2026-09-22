@@ -15,20 +15,40 @@
   var avatarEl = document.getElementById('userAvatar');
   var signOutButton = document.getElementById('signOutButton');
 
+  var accountForm = document.getElementById('accountForm');
+  var accountStatusEl = document.getElementById('accountStatus');
+  var acctClientRow1 = document.getElementById('acctClientRow1');
+  var acctClientRow2 = document.getElementById('acctClientRow2');
+
   var SESSION_KEY = 'ecoshell_session';
   var EMAIL_KEY = 'ecoshell_email';
   var ROLE_KEY = 'ecoshell_role';
 
-  var adminState = {view: 'enquiries', data: null};
+  var state = {role: null, sessionToken: null, view: 'dashboard', data: null, profile: null};
+
+  var ICON_DASHBOARD = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>';
+  var ICON_ENQUIRIES = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+  var ICON_PROJECTS = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>';
+  var ICON_SAMPLES = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>';
+  var ICON_COMPANIES = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>';
+  var ICON_CLIENTS = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+  var ICON_ACCOUNT = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+
+  function navItem(view, icon, label){
+    return '<button type="button" class="app-nav__item" data-view="' + view + '">' + icon + label + '</button>';
+  }
 
   var CLIENT_NAV = '<p class="app-nav__label">Overview</p>' +
-    '<span class="app-nav__item is-active"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</span>';
+    navItem('dashboard', ICON_DASHBOARD, 'Dashboard') +
+    navItem('account', ICON_ACCOUNT, 'Account');
 
   var ADMIN_NAV = '<p class="app-nav__label">Workspace</p>' +
-    '<button type="button" class="app-nav__item is-active" data-view="enquiries"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Enquiries</button>' +
-    '<button type="button" class="app-nav__item" data-view="projects"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Projects</button>' +
-    '<button type="button" class="app-nav__item" data-view="samples"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Samples</button>' +
-    '<button type="button" class="app-nav__item" data-view="companies"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>Companies</button>';
+    navItem('enquiries', ICON_ENQUIRIES, 'Enquiries') +
+    navItem('projects', ICON_PROJECTS, 'Projects') +
+    navItem('samples', ICON_SAMPLES, 'Samples') +
+    navItem('companies', ICON_COMPANIES, 'Companies') +
+    navItem('clients', ICON_CLIENTS, 'Clients') +
+    navItem('account', ICON_ACCOUNT, 'Account');
 
   var clientDemo = {
     projects: [
@@ -53,7 +73,8 @@
     companies: [{name: 'Demo Packaging Co.', region: 'United States', industry: 'Packaging', access_status: 'lead'}],
     enquiries: [{first_name: 'Maya', last_name: 'Singh', company: 'Demo Packaging Co.', email: 'maya@example.com', country: 'United States', application: 'Injection moulding', message: 'Looking for a lower-plastic closure compound.', status: 'new'}],
     projects: [{id: 'demo-1', reference_code: 'ECO-8A41C2F0', name: 'Injection moulded closure review', status: 'technical_review', polymer: 'PP', process: 'Injection moulding', companies: {name: 'Demo Packaging Co.'}}],
-    samples: [{status: 'preparing', tracking_number: '', projects: {reference_code: 'ECO-8A41C2F0', name: 'Injection moulded closure review', companies: {name: 'Demo Packaging Co.'}}}]
+    samples: [{status: 'preparing', tracking_number: '', projects: {reference_code: 'ECO-8A41C2F0', name: 'Injection moulded closure review', companies: {name: 'Demo Packaging Co.'}}}],
+    clients: [{email: 'maya@example.com', name: 'Maya Singh', company_name: 'Demo Packaging Co.', job_title: 'Procurement', phone: '', country: 'United States', industry: 'Food and Agri', archetype: 'Emerging Brand'}]
   };
 
   function labelStatus(status){
@@ -72,10 +93,22 @@
     statusEl.classList.toggle('is-error', !!isError);
   }
 
+  function setAccountStatus(message, isError){
+    if(!accountStatusEl) return;
+    accountStatusEl.textContent = message || '';
+    accountStatusEl.classList.toggle('is-error', !!isError);
+  }
+
   function showAuth(){
     dashboardSection.hidden = true;
     authSection.hidden = false;
     if(siteHeader) siteHeader.hidden = false;
+  }
+
+  function setActiveNav(view){
+    appNav.querySelectorAll('.app-nav__item').forEach(function(item){
+      item.classList.toggle('is-active', item.dataset.view === view);
+    });
   }
 
   function enterDashboard(role, email){
@@ -88,15 +121,16 @@
     avatarEl.textContent = email ? email.charAt(0).toUpperCase() : '?';
     appNav.innerHTML = role === 'admin' ? ADMIN_NAV : CLIENT_NAV;
 
-    if(role === 'admin'){
-      appNav.querySelectorAll('.app-nav__item[data-view]').forEach(function(tab){
-        tab.addEventListener('click', function(){
-          appNav.querySelectorAll('.app-nav__item').forEach(function(item){ item.classList.toggle('is-active', item === tab); });
-          adminState.view = tab.dataset.view;
-          renderAdminList();
-        });
+    appNav.querySelectorAll('.app-nav__item[data-view]').forEach(function(tab){
+      tab.addEventListener('click', function(){
+        state.view = tab.dataset.view;
+        setActiveNav(state.view);
+        renderCurrentView();
       });
-    }
+    });
+
+    state.view = role === 'admin' ? 'enquiries' : 'dashboard';
+    setActiveNav(state.view);
   }
 
   function renderClientKpis(data){
@@ -148,10 +182,11 @@
         return res.json();
       })
       .then(function(data){
-        if(data){ renderClientKpis(data); renderClientList(data); }
+        if(data){ state.data = data; renderClientKpis(data); renderClientList(data); }
       })
       .catch(function(){
         setStatus('Could not reach the portal service right now. Showing sample data instead.', true);
+        state.data = clientDemo;
         renderClientKpis(clientDemo);
         renderClientList(clientDemo);
       });
@@ -174,28 +209,72 @@
     ].join('');
   }
 
+  function countBy(items, key){
+    var counts = {};
+    items.forEach(function(item){
+      var value = item[key] || 'Not set';
+      counts[value] = (counts[value] || 0) + 1;
+    });
+    return counts;
+  }
+
+  function breakdownTable(title, counts){
+    var rows = Object.keys(counts).sort().map(function(key){
+      return '<div><dt>' + esc(key) + '</dt><dd>' + counts[key] + '</dd></div>';
+    }).join('');
+    return '<article class="portal-card">' +
+      '<h3>' + esc(title) + '</h3>' +
+      '<dl class="breakdown-table">' + rows + '</dl>' +
+    '</article>';
+  }
+
+  function renderClientsView(data){
+    var clients = data.clients || [];
+    var archetypeCounts = countBy(clients, 'archetype');
+    var industryCounts = countBy(clients, 'industry');
+
+    var cards = clients.map(function(item){
+      return adminCard(
+        item.name || item.email,
+        item.company_name || 'Company not set',
+        (item.job_title ? item.job_title + ' · ' : '') + (item.phone || 'No phone on file'),
+        item.archetype || item.industry
+      );
+    }).join('');
+
+    list.innerHTML =
+      '<div class="breakdown-grid">' +
+        breakdownTable('By archetype', archetypeCounts) +
+        breakdownTable('By industry', industryCounts) +
+      '</div>' +
+      (cards || '<article class="portal-card"><h2>No client accounts yet</h2><p>Client sign-ups will show up here.</p></article>');
+  }
+
   function renderAdminList(){
-    var data = adminState.data || adminDemo;
-    if(adminState.view === 'enquiries'){
+    var data = state.data || adminDemo;
+    if(state.view === 'enquiries'){
       list.innerHTML = data.enquiries.map(function(item){
         return adminCard(item.company, item.email + ' · ' + item.application, item.message, item.status);
       }).join('');
     }
-    if(adminState.view === 'projects'){
+    if(state.view === 'projects'){
       list.innerHTML = data.projects.map(function(item){
         return adminCard(item.name, item.reference_code + ' · ' + (item.companies?.name || 'Company'), (item.polymer || 'Polymer TBD') + ' · ' + (item.process || 'Process TBD'), item.status);
       }).join('');
     }
-    if(adminState.view === 'samples'){
+    if(state.view === 'samples'){
       list.innerHTML = data.samples.map(function(item){
         var project = item.projects || {};
         return adminCard(project.name || 'Sample request', (project.reference_code || 'Project') + ' · ' + (project.companies?.name || 'Company'), item.tracking_number ? 'Tracking: ' + item.tracking_number : 'No tracking number yet.', item.status);
       }).join('');
     }
-    if(adminState.view === 'companies'){
+    if(state.view === 'companies'){
       list.innerHTML = data.companies.map(function(item){
         return adminCard(item.name, (item.region || 'Region TBD') + ' · ' + (item.industry || 'Industry TBD'), 'Access status: ' + labelStatus(item.access_status), item.access_status);
       }).join('');
+    }
+    if(state.view === 'clients'){
+      renderClientsView(data);
     }
   }
 
@@ -218,8 +297,7 @@
           return;
         }
         setStatus('', false);
-        adminState.data = result.body;
-        adminState.view = 'enquiries';
+        state.data = result.body;
         renderAdminKpis(result.body);
         renderAdminList();
       })
@@ -229,21 +307,71 @@
       });
   }
 
+  function loadAccountForm(){
+    setAccountStatus('Loading account...', false);
+    accountForm.acctEmailInput = document.getElementById('acctEmail');
+    fetch('/api/profile', {headers: {'x-session': state.sessionToken}})
+      .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
+      .then(function(result){
+        if(!result.ok){
+          setAccountStatus(result.body.error || 'Could not load account.', true);
+          return;
+        }
+        var profile = result.body.profile || {};
+        state.profile = profile;
+        document.getElementById('acctName').value = profile.name || '';
+        document.getElementById('acctEmail').value = profile.email || '';
+        document.getElementById('acctCompanyName').value = profile.company_name || '';
+        document.getElementById('acctJobTitle').value = profile.job_title || '';
+        document.getElementById('acctPhone').value = profile.phone || '';
+        document.getElementById('acctCountry').value = profile.country || '';
+        document.getElementById('acctIndustry').value = profile.industry || '';
+        document.getElementById('acctArchetype').value = profile.archetype || '';
+        setAccountStatus('', false);
+      })
+      .catch(function(){
+        setAccountStatus('Could not reach the account service right now.', true);
+      });
+  }
+
+  function renderCurrentView(){
+    if(state.view === 'account'){
+      kpis.hidden = true;
+      list.hidden = true;
+      accountForm.hidden = false;
+      var isClient = state.role === 'client';
+      acctClientRow1.hidden = !isClient;
+      acctClientRow2.hidden = !isClient;
+      loadAccountForm();
+      return;
+    }
+
+    kpis.hidden = false;
+    list.hidden = false;
+    accountForm.hidden = true;
+
+    if(state.role === 'admin') renderAdminList();
+  }
+
+  function loadDashboard(role, sessionToken){
+    if(role === 'admin') loadAdminDashboard(sessionToken);
+    else loadClientDashboard(sessionToken);
+  }
+
   function persistSession(role, sessionToken, email){
     sessionStorage.setItem(SESSION_KEY, sessionToken);
     sessionStorage.setItem(EMAIL_KEY, email || '');
     sessionStorage.setItem(ROLE_KEY, role);
+    state.role = role;
+    state.sessionToken = sessionToken;
   }
 
   function clearSession(){
     sessionStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(EMAIL_KEY);
     sessionStorage.removeItem(ROLE_KEY);
-  }
-
-  function loadDashboard(role, sessionToken){
-    if(role === 'admin') loadAdminDashboard(sessionToken);
-    else loadClientDashboard(sessionToken);
+    state.role = null;
+    state.sessionToken = null;
   }
 
   form.addEventListener('submit', function(event){
@@ -278,6 +406,45 @@
       });
   });
 
+  accountForm.addEventListener('submit', function(event){
+    event.preventDefault();
+    var submitButton = accountForm.querySelector('button[type="submit"]');
+    if(submitButton) submitButton.disabled = true;
+    setAccountStatus('Saving...', false);
+
+    var payload = {
+      name: document.getElementById('acctName').value,
+      phone: document.getElementById('acctPhone').value,
+      country: document.getElementById('acctCountry').value
+    };
+    if(state.role === 'client'){
+      payload.company_name = document.getElementById('acctCompanyName').value;
+      payload.job_title = document.getElementById('acctJobTitle').value;
+      payload.industry = document.getElementById('acctIndustry').value;
+      payload.archetype = document.getElementById('acctArchetype').value;
+    }
+
+    fetch('/api/profile', {
+      method: 'PATCH',
+      headers: {'content-type': 'application/json', 'x-session': state.sessionToken},
+      body: JSON.stringify(payload)
+    })
+      .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
+      .then(function(result){
+        if(submitButton) submitButton.disabled = false;
+        if(!result.ok){
+          setAccountStatus(result.body.error || 'Could not save changes.', true);
+          return;
+        }
+        state.profile = result.body.profile;
+        setAccountStatus('Saved.', false);
+      })
+      .catch(function(){
+        if(submitButton) submitButton.disabled = false;
+        setAccountStatus('Could not reach the account service right now.', true);
+      });
+  });
+
   if(signOutButton){
     signOutButton.addEventListener('click', function(){
       clearSession();
@@ -290,6 +457,8 @@
   var storedRole = sessionStorage.getItem(ROLE_KEY);
   var storedEmail = sessionStorage.getItem(EMAIL_KEY);
   if(storedSession && storedRole){
+    state.role = storedRole;
+    state.sessionToken = storedSession;
     enterDashboard(storedRole, storedEmail);
     loadDashboard(storedRole, storedSession);
   }

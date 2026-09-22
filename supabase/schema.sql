@@ -82,6 +82,12 @@ create table if not exists users (
   password_hash text,
   role text not null default 'client' check (role in ('client', 'admin')),
   name text,
+  company_name text,
+  job_title text,
+  phone text,
+  country text,
+  industry text,
+  archetype text,
   created_at timestamptz not null default now()
 );
 
@@ -137,6 +143,13 @@ alter table project_updates add column if not exists audience text not null defa
 alter table project_updates add column if not exists body text;
 alter table project_updates add column if not exists created_by text not null default 'admin';
 alter table project_updates add column if not exists created_at timestamptz not null default now();
+
+alter table users add column if not exists company_name text;
+alter table users add column if not exists job_title text;
+alter table users add column if not exists phone text;
+alter table users add column if not exists country text;
+alter table users add column if not exists industry text;
+alter table users add column if not exists archetype text;
 
 create index if not exists users_email_idx on users(lower(email));
 create index if not exists enquiries_email_idx on enquiries(lower(email));

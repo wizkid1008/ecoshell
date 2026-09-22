@@ -24,6 +24,7 @@
 }
 
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{
   margin:0;
   background:var(--paper);
@@ -264,7 +265,6 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 
 /* ---------- app shell (sidebar dashboard) ---------- */
 .app-shell{display:flex;min-height:calc(100vh - 75px)}
-.app-shell[hidden]{display:none}
 .app-sidebar{width:240px;flex:none;background:var(--deep);color:#fff;display:flex;flex-direction:column;padding:20px 0}
 .app-sidebar__brand{display:block;padding:0 20px 20px;text-decoration:none}
 .app-nav{flex:1;overflow:auto;padding:4px 0}
@@ -286,7 +286,6 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 
 /* ---------- auth card ---------- */
 .auth{background:var(--deep);min-height:calc(100vh - 75px);display:flex;align-items:center;justify-content:center;padding:48px 20px}
-.auth[hidden]{display:none}
 .auth-card{background:rgba(255,255,255,.06);border:1px solid var(--line-dark);max-width:400px;width:100%;padding:clamp(28px,4vw,44px)}
 .auth-card .eyebrow{color:var(--green-lift)}
 .auth-card h1{color:#fff;font-size:clamp(26px,3vw,32px);font-weight:300;margin:6px 0 26px}
@@ -317,6 +316,14 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 .portal-meta dd{margin:2px 0 0;color:var(--deep)}
 .portal-note{background:var(--mist);border-left:3px solid var(--lime);padding:12px 14px;color:var(--deep)!important}
 .portal-updates{margin:0;padding-left:18px;color:var(--stone)}
+.breakdown-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.breakdown-table{margin:0;display:grid;gap:1px;background:var(--line);border:1px solid var(--line)}
+.breakdown-table div{background:var(--mist);padding:10px 14px;display:flex;justify-content:space-between;gap:12px}
+.breakdown-table dt{font-weight:400;color:var(--deep)}
+.breakdown-table dd{margin:0;font-family:var(--f-display);color:var(--stone)}
+.account-form h2{font-size:clamp(21px,2.3vw,28px);font-weight:400}
+.account-form .field input:disabled{color:var(--stone-2);cursor:not-allowed}
+.account-form .btn{justify-self:start}
 
 /* ---------- footer ---------- */
 footer{background:var(--ink);color:#A9B9AF}
@@ -377,4 +384,5 @@ footer{background:var(--ink);color:#A9B9AF}
   .app-nav__label{display:none}
   .app-nav__item{width:auto;white-space:nowrap;padding:8px 12px}
   .app-sidebar__user{border-top:0;margin-top:0;padding:0}
+  .breakdown-grid{grid-template-columns:1fr}
 }

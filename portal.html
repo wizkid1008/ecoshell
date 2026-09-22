@@ -75,6 +75,55 @@
         <h1 id="dashboardHeading"></h1>
         <div class="portal-kpis" id="dashboardKpis"></div>
         <div class="portal-list" id="dashboardList"></div>
+
+        <form class="account-form portal-card" id="accountForm" hidden>
+          <h2>Account</h2>
+          <div class="frow">
+            <div class="field"><label for="acctName">Full name</label><input id="acctName" name="name" type="text" autocomplete="name"></div>
+            <div class="field"><label for="acctEmail">Email</label><input id="acctEmail" type="email" disabled></div>
+          </div>
+          <div class="frow" id="acctClientRow1">
+            <div class="field"><label for="acctCompanyName">Company name</label><input id="acctCompanyName" name="company_name" type="text" autocomplete="organization"></div>
+            <div class="field"><label for="acctJobTitle">Job title</label><input id="acctJobTitle" name="job_title" type="text" autocomplete="organization-title"></div>
+          </div>
+          <div class="frow">
+            <div class="field"><label for="acctPhone">Phone</label><input id="acctPhone" name="phone" type="tel" autocomplete="tel"></div>
+            <div class="field"><label for="acctCountry">Country</label><input id="acctCountry" name="country" type="text" autocomplete="country-name"></div>
+          </div>
+          <div class="frow" id="acctClientRow2">
+            <div class="field">
+              <label for="acctIndustry">Industry</label>
+              <select id="acctIndustry" name="industry">
+                <option value="">Select an industry</option>
+                <option>Beauty</option>
+                <option>Fashion</option>
+                <option>Food and Agri</option>
+                <option>Health &amp; Life Sciences</option>
+                <option>Tech</option>
+                <option>Toys</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="acctArchetype">Archetype</label>
+              <select id="acctArchetype" name="archetype">
+                <option value="">Select an archetype</option>
+                <option>Converter</option>
+                <option>Distributors</option>
+                <option>Ecoshell Branded</option>
+                <option>Ecosystem Player</option>
+                <option>Emerging Brand</option>
+                <option>Large Brands</option>
+                <option>Large Retailer</option>
+                <option>Material Manufacturer</option>
+                <option>Manufacturer Supplier</option>
+                <option>Mid Market</option>
+                <option>Specialty compounder</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn--solid" type="submit">Save changes</button>
+          <p class="portal-status" id="accountStatus" role="status" aria-live="polite"></p>
+        </form>
       </div>
     </div>
   </section>
