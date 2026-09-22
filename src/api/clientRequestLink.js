@@ -1,6 +1,6 @@
 import {cleanString, generateToken, json, requireEnv, sendEmail, supabaseFetch} from '../lib/supabase.js';
 
-const GENERIC_RESPONSE = {ok: true, message: 'If that email has projects with Ecoshell, a login link has been sent.'};
+const GENERIC_RESPONSE = {ok: true, message: 'A login link has been sent to that email.'};
 
 export async function clientRequestLink({request, env}) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'PUBLIC_SITE_URL']);
@@ -17,9 +17,6 @@ export async function clientRequestLink({request, env}) {
   if (!email) return json({error: 'Email is required.'}, {status: 400});
 
   try {
-    const enquiries = await supabaseFetch(env, `enquiries?email=eq.${encodeURIComponent(email)}&select=id&limit=1`);
-    if (!enquiries.length) return json(GENERIC_RESPONSE);
-
     const token = generateToken();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
