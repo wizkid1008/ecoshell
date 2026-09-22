@@ -5,6 +5,9 @@
   var list = document.getElementById('clientProjects');
   var kpis = document.getElementById('clientKpis');
   var statusEl = document.getElementById('clientLoginStatus');
+  var authSection = document.getElementById('authSection');
+  var dashboardSection = document.getElementById('dashboardSection');
+  var signOutButton = document.getElementById('clientSignOut');
   var SESSION_KEY = 'ecoshell_client_session';
 
   var demo = {
@@ -55,6 +58,16 @@
     statusEl.classList.toggle('is-error', !!isError);
   }
 
+  function showDashboard(){
+    authSection.hidden = true;
+    dashboardSection.hidden = false;
+  }
+
+  function showAuth(){
+    dashboardSection.hidden = true;
+    authSection.hidden = false;
+  }
+
   function render(data){
     var projects = data.projects || [];
     var active = projects.filter(function(project){ return !/closed|complete|not_fit/.test(project.status || ''); }).length;
@@ -86,6 +99,7 @@
   }
 
   function loadProjects(sessionToken){
+    showDashboard();
     list.innerHTML = '<article class="portal-card"><p>Loading projects...</p></article>';
 
     fetch('/api/client/projects', {headers: {'x-client-session': sessionToken}})
@@ -93,7 +107,7 @@
         if(res.status === 401){
           sessionStorage.removeItem(SESSION_KEY);
           setStatus('Your session has expired. Please sign in again.', true);
-          render(demo);
+          showAuth();
           return null;
         }
         if(!res.ok) throw new Error('client unavailable');
@@ -138,10 +152,16 @@
       });
   });
 
+  if(signOutButton){
+    signOutButton.addEventListener('click', function(){
+      sessionStorage.removeItem(SESSION_KEY);
+      form.reset();
+      showAuth();
+    });
+  }
+
   var storedSession = sessionStorage.getItem(SESSION_KEY);
   if(storedSession){
     loadProjects(storedSession);
-  } else {
-    render(demo);
   }
 })();

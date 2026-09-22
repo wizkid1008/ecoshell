@@ -94,16 +94,36 @@
     statusEl.classList.toggle('is-error', !!isError);
   }
 
+  var authSection = document.getElementById('authSection');
+  var dashboardSection = document.getElementById('dashboardSection');
+  var signOutButton = document.getElementById('adminSignOut');
+
+  function showDashboard(){
+    authSection.hidden = true;
+    dashboardSection.hidden = false;
+  }
+
+  function showAuth(){
+    dashboardSection.hidden = true;
+    authSection.hidden = false;
+  }
+
   function loadOverview(sessionToken){
+    showDashboard();
     list.innerHTML = '<article class="portal-card"><p>Loading admin workspace...</p></article>';
 
     fetch('/api/admin/overview', {headers: {'x-admin-session': sessionToken}})
       .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, status: res.status, body: body}; }); })
       .then(function(result){
         if(!result.ok){
-          if(result.status === 401) sessionStorage.removeItem(SESSION_KEY);
+          if(result.status === 401){
+            sessionStorage.removeItem(SESSION_KEY);
+            setStatus(result.body.error || 'Please log in again.', true);
+            showAuth();
+            return;
+          }
           setStatus(result.body.error || 'Could not reach the admin service right now.', true);
-          list.innerHTML = '<article class="portal-card"><h2>Unable to load admin data</h2><p>' + esc(result.body.error || 'Please log in again.') + '</p></article>';
+          list.innerHTML = '<article class="portal-card"><h2>Unable to load admin data</h2><p>' + esc(result.body.error || 'Please try again.') + '</p></article>';
           return;
         }
         setStatus('', false);
@@ -147,9 +167,13 @@
       });
   });
 
-  state.data = demo;
-  renderKpis(demo);
-  renderList();
+  if(signOutButton){
+    signOutButton.addEventListener('click', function(){
+      sessionStorage.removeItem(SESSION_KEY);
+      form.reset();
+      showAuth();
+    });
+  }
 
   var storedSession = sessionStorage.getItem(SESSION_KEY);
   if(storedSession) loadOverview(storedSession);

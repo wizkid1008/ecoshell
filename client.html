@@ -35,11 +35,11 @@
 </div></header>
 
 <main class="portal portal--client">
-  <section class="portal__mast">
-    <div class="wrap">
-      <p class="eyebrow">Portal prototype</p>
-      <h1>Track material reviews, sample requests and next steps.</h1>
-      <form class="portal-login" id="clientLogin">
+  <section class="auth" id="authSection">
+    <div class="auth-card">
+      <p class="eyebrow">Client Portal</p>
+      <h1>Sign in</h1>
+      <form class="auth-form" id="clientLogin">
         <div class="field">
           <label for="clientEmail">Work email</label>
           <input id="clientEmail" name="clientEmail" type="email" autocomplete="email" placeholder="name@company.com" required>
@@ -48,15 +48,19 @@
           <label for="clientPassword">Password</label>
           <input id="clientPassword" name="clientPassword" type="password" autocomplete="current-password" placeholder="At least 8 characters" minlength="8" required>
         </div>
-        <button class="btn btn--solid" type="submit">Sign in</button>
+        <button class="btn btn--solid btn--block" type="submit">Sign in</button>
       </form>
       <p class="portal-status" id="clientLoginStatus" role="status" aria-live="polite"></p>
-      <p class="portal__hint">First time here? Enter any email and a password — that creates your account. Returning? Use the same email and password to sign in.</p>
+      <p class="auth-hint">First time here? Just enter an email and password to create your account.</p>
     </div>
   </section>
 
-  <section class="portal__body">
+  <section class="portal__body" id="dashboardSection" hidden>
     <div class="wrap">
+      <div class="dashboard-top">
+        <h1>Track material reviews, sample requests and next steps.</h1>
+        <button class="btn" type="button" id="clientSignOut">Sign out</button>
+      </div>
       <div class="portal-kpis" id="clientKpis"></div>
       <div class="portal-list" id="clientProjects"></div>
     </div>

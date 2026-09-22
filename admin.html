@@ -32,11 +32,11 @@
 </div></header>
 
 <main class="portal portal--admin">
-  <section class="portal__mast">
-    <div class="wrap">
-      <p class="eyebrow">Admin portal prototype</p>
-      <h1>Manage client inquiries from first contact to sample trial.</h1>
-      <form class="portal-login" id="adminLogin">
+  <section class="auth" id="authSection">
+    <div class="auth-card">
+      <p class="eyebrow">Admin</p>
+      <h1>Sign in</h1>
+      <form class="auth-form" id="adminLogin">
         <div class="field">
           <label for="adminEmail">Admin email</label>
           <input id="adminEmail" name="adminEmail" type="email" autocomplete="email" placeholder="name@ecoshell.eco" required>
@@ -45,15 +45,19 @@
           <label for="adminPassword">Password</label>
           <input id="adminPassword" name="adminPassword" type="password" autocomplete="current-password" placeholder="At least 8 characters" minlength="8" required>
         </div>
-        <button class="btn btn--solid" type="submit">Sign in</button>
+        <button class="btn btn--solid btn--block" type="submit">Sign in</button>
       </form>
       <p class="portal-status" id="adminLoginStatus" role="status" aria-live="polite"></p>
-      <p class="portal__hint">Only emails already listed as admins can sign in. First sign-in for a listed email sets its password.</p>
+      <p class="auth-hint">Only emails already listed as admins can sign in.</p>
     </div>
   </section>
 
-  <section class="portal__body">
+  <section class="portal__body" id="dashboardSection" hidden>
     <div class="wrap">
+      <div class="dashboard-top">
+        <h1>Manage client inquiries from first contact to sample trial.</h1>
+        <button class="btn" type="button" id="adminSignOut">Sign out</button>
+      </div>
       <div class="portal-kpis" id="adminKpis"></div>
       <div class="portal-tabs" role="tablist" aria-label="Admin views">
         <button type="button" class="is-active" data-view="enquiries">Enquiries</button>
