@@ -6,13 +6,20 @@ create extension if not exists pgcrypto;
 -- row with no password_hash yet). users/enquiries/projects are dropped and
 -- recreated outright rather than patched in place, since the role values
 -- and the company_id -> user_id foreign key are changing shape, not just
--- gaining columns. There's no production data yet -- safe to run even if
--- these were already dropped.
+-- gaining columns. sample_requests/project_documents/project_updates are
+-- also dropped: CASCADE from the projects drop silently strips their
+-- foreign key to projects, and since those tables already exist,
+-- `create table if not exists` would otherwise skip recreating that FK.
+-- There's no production data yet -- safe to run even if these were
+-- already dropped.
 drop table if exists admin_users cascade;
 drop table if exists client_accounts cascade;
 drop table if exists admin_login_tokens cascade;
 drop table if exists client_login_tokens cascade;
 drop table if exists companies cascade;
+drop table if exists sample_requests cascade;
+drop table if exists project_documents cascade;
+drop table if exists project_updates cascade;
 drop table if exists enquiries cascade;
 drop table if exists projects cascade;
 drop table if exists users cascade;
