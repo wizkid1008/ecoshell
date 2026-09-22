@@ -217,5 +217,7 @@ create policy "service role manages client accounts" on client_accounts
 insert into admin_users (email, name)
 values
   ('kyle.a.newell@gmail.com', 'Kyle Newell'),
-  ('kyle@ecoshell.eco', 'Kyle Newell')
+  ('kyle@ecoshell.eco', 'Kyle Newell'),
+  ('andrew@ecoshell.eco', 'Andrew'),
+  ('doug@ecoshell.eco', 'Doug')
 on conflict (email) do nothing;
