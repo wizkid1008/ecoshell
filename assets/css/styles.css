@@ -319,6 +319,10 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 .internal-note{background:var(--shell);border-left:3px solid var(--stone-2);padding:12px 14px;color:var(--deep)}
 .opportunity-row{cursor:pointer}
 .opportunity-row:hover .portal-card{border-color:var(--green)}
+.editable-row{cursor:pointer}
+.editable-row:hover{outline:1px solid var(--green)}
+.client-row{cursor:pointer}
+.client-row:hover .portal-card{border-color:var(--green)}
 .breakdown-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 .breakdown-table{margin:0;display:grid;gap:1px;background:var(--line);border:1px solid var(--line)}
 .breakdown-table div{background:var(--mist);padding:10px 14px;display:flex;justify-content:space-between;gap:12px}

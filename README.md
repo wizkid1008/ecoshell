@@ -92,10 +92,14 @@ company, its contacts, and each opportunity between them:
   code path that could leak one to a client account.
 
 **Admin workflow**: Opportunities tab → click a card → detail view with the
-pipeline-stage and owner dropdowns, and one section each for samples, pilot
-(+ results), proposal, contract, documents, client-visible updates and
-internal notes. The Clients tab lists every contact (`role: member`) with a
-status pill and By-archetype / By-industry breakdown counts.
+pipeline-stage, owner, polymer/process/target fields, and one section each
+for samples, pilot (+ results), proposal, contract, documents, client-visible
+updates and internal notes — click any existing entry to load it back into
+that section's form and save it as an edit instead of adding a new one. The
+Clients tab lists every contact (`role: member`) with a status pill and
+By-archetype / By-industry breakdown counts, plus a Companies list below it;
+clicking a client or company opens an edit view for their profile / company
+record.
 
 **Client workflow**: sign in → see every opportunity for your company (not
 just ones you personally started) — stage, sample/pilot progress, proposal
@@ -123,8 +127,11 @@ Backend files:
 - `src/api/adminProjects.js` updates an opportunity's stage/owner/material
   fields, and can post a client-visible update and/or an internal note in
   the same call. Requires `role: admin`.
-- `src/api/adminRecords.js` records a sample, pilot, pilot result, proposal,
-  contract or document against an opportunity. Requires `role: admin`.
+- `src/api/adminRecords.js` records (and edits, via matching `PATCH`
+  routes) a sample, pilot, pilot result, proposal, contract or document
+  against an opportunity, plus a company's own record and a client's
+  profile on their behalf (`PATCH /api/admin/companies`,
+  `PATCH /api/admin/clients`). Requires `role: admin`.
 - `src/api/profile.js` returns/updates the signed-in user's own profile
   (name, phone, country; members also get company name, job title, industry
   and archetype). Saving a company name finds-or-creates that company and

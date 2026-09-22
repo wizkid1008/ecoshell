@@ -14,7 +14,17 @@ import {
   pilotResultCreate,
   proposalCreate,
   contractCreate,
-  documentCreate
+  documentCreate,
+  sampleUpdate,
+  pilotUpdate,
+  pilotResultUpdate,
+  proposalUpdate,
+  contractUpdate,
+  documentUpdate,
+  noteUpdate,
+  clientUpdateEdit,
+  companyUpdate,
+  clientUpdate
 } from './api/adminRecords.js';
 
 const routes = [
@@ -29,6 +39,16 @@ const routes = [
   {method: 'POST', path: '/api/admin/proposals', handler: proposalCreate},
   {method: 'POST', path: '/api/admin/contracts', handler: contractCreate},
   {method: 'POST', path: '/api/admin/documents', handler: documentCreate},
+  {method: 'PATCH', path: '/api/admin/samples', handler: sampleUpdate},
+  {method: 'PATCH', path: '/api/admin/pilots', handler: pilotUpdate},
+  {method: 'PATCH', path: '/api/admin/pilot-results', handler: pilotResultUpdate},
+  {method: 'PATCH', path: '/api/admin/proposals', handler: proposalUpdate},
+  {method: 'PATCH', path: '/api/admin/contracts', handler: contractUpdate},
+  {method: 'PATCH', path: '/api/admin/documents', handler: documentUpdate},
+  {method: 'PATCH', path: '/api/admin/notes', handler: noteUpdate},
+  {method: 'PATCH', path: '/api/admin/updates', handler: clientUpdateEdit},
+  {method: 'PATCH', path: '/api/admin/companies', handler: companyUpdate},
+  {method: 'PATCH', path: '/api/admin/clients', handler: clientUpdate},
   {method: 'POST', path: '/api/login', handler: login},
   {method: 'GET', path: '/api/client/projects', handler: clientProjects},
   {method: 'GET', path: '/api/profile', handler: profileGet},

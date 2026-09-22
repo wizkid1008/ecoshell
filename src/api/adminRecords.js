@@ -219,3 +219,138 @@ export async function documentCreate({request, env}) {
     return json({error: error.message}, {status: 500});
   }
 }
+
+function makeUpdater(table, fields, select) {
+  return async function update({request, env}) {
+    const auth = await requireAdmin(request, env);
+    if (auth.error) return auth.error;
+
+    const payload = await request.json();
+    if (!payload.id) return json({error: 'id is required.'}, {status: 400});
+
+    const update = pick(payload, fields);
+    if (!Object.keys(update).length) return json({error: 'No fields to update.'}, {status: 400});
+
+    try {
+      const rows = await supabaseFetch(env, `${table}?id=eq.${payload.id}&select=${select}`, {
+        method: 'PATCH',
+        headers: {prefer: 'return=representation'},
+        body: JSON.stringify(update)
+      });
+      if (!rows.length) return json({error: 'Not found.'}, {status: 404});
+      return json({record: rows[0]});
+    } catch (error) {
+      return json({error: error.message}, {status: 500});
+    }
+  };
+}
+
+export const sampleUpdate = makeUpdater(
+  'sample_requests',
+  ['status', 'shipping_name', 'shipping_address', 'tracking_number', 'admin_note'],
+  'id,status,shipping_name,shipping_address,tracking_number,admin_note,created_at'
+);
+
+export const pilotUpdate = makeUpdater(
+  'pilots',
+  ['status', 'success_criteria', 'start_date', 'end_date'],
+  'id,status,success_criteria,start_date,end_date,created_at'
+);
+
+export const pilotResultUpdate = makeUpdater(
+  'pilot_results',
+  ['outcome', 'summary'],
+  'id,outcome,summary,recorded_by,created_at'
+);
+
+export const proposalUpdate = makeUpdater(
+  'proposals',
+  ['status', 'amount', 'currency', 'terms', 'sent_at'],
+  'id,status,amount,currency,terms,sent_at,created_at'
+);
+
+export const contractUpdate = makeUpdater(
+  'contracts',
+  ['status', 'value', 'currency', 'term', 'signed_at'],
+  'id,status,value,currency,term,signed_at,created_at'
+);
+
+export const documentUpdate = makeUpdater(
+  'project_documents',
+  ['title', 'url', 'document_type', 'visibility'],
+  'id,title,url,document_type,visibility,created_at'
+);
+
+export const noteUpdate = makeUpdater(
+  'internal_notes',
+  ['body'],
+  'id,body,created_by,created_at'
+);
+
+export const clientUpdateEdit = makeUpdater(
+  'project_updates',
+  ['body'],
+  'id,body,created_by,created_at'
+);
+
+export async function companyUpdate({request, env}) {
+  const auth = await requireAdmin(request, env);
+  if (auth.error) return auth.error;
+
+  const payload = await request.json();
+  if (!payload.id) return json({error: 'id is required.'}, {status: 400});
+
+  const update = pick(payload, ['name', 'industry', 'archetype', 'country']);
+  if (!Object.keys(update).length) return json({error: 'No fields to update.'}, {status: 400});
+
+  try {
+    const rows = await supabaseFetch(env, `companies?id=eq.${payload.id}&select=id,name,industry,archetype,country,created_at`, {
+      method: 'PATCH',
+      headers: {prefer: 'return=representation'},
+      body: JSON.stringify(update)
+    });
+    if (!rows.length) return json({error: 'Not found.'}, {status: 404});
+    return json({company: rows[0]});
+  } catch (error) {
+    return json({error: error.message}, {status: 500});
+  }
+}
+
+const CLIENT_FIELDS = 'id,email,name,role,status,company_name,job_title,phone,country,industry,archetype,created_at';
+const CLIENT_STATUSES = ['lead', 'contact', 'client'];
+
+export async function clientUpdate({request, env}) {
+  const auth = await requireAdmin(request, env);
+  if (auth.error) return auth.error;
+
+  const payload = await request.json();
+  if (!payload.id) return json({error: 'id is required.'}, {status: 400});
+  if (payload.status !== undefined && !CLIENT_STATUSES.includes(payload.status)) {
+    return json({error: 'Invalid status.'}, {status: 400});
+  }
+
+  const update = pick(payload, ['name', 'status', 'job_title', 'phone', 'country', 'industry', 'archetype']);
+  if (!Object.keys(update).length) return json({error: 'No fields to update.'}, {status: 400});
+
+  try {
+    if (update.country) {
+      const matches = await supabaseFetch(env, `countries?name=eq.${encodeURIComponent(update.country)}&select=name`);
+      if (!matches.length) return json({error: 'Invalid country.'}, {status: 400});
+    }
+    if (payload.company_name !== undefined) {
+      const companyName = cleanString(payload.company_name);
+      update.company_name = companyName || null;
+      update.company_id = companyName ? await findOrCreateCompany(env, companyName) : null;
+    }
+
+    const rows = await supabaseFetch(env, `users?id=eq.${payload.id}&role=eq.member&select=${CLIENT_FIELDS}`, {
+      method: 'PATCH',
+      headers: {prefer: 'return=representation'},
+      body: JSON.stringify(update)
+    });
+    if (!rows.length) return json({error: 'Not found.'}, {status: 404});
+    return json({client: rows[0]});
+  } catch (error) {
+    return json({error: error.message}, {status: 500});
+  }
+}

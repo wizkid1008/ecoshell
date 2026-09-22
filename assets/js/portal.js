@@ -64,6 +64,20 @@
     navItem('clients', ICON_CLIENTS, 'Clients') +
     navItem('account', ICON_ACCOUNT, 'Account');
 
+  var INDUSTRIES = ['Beauty', 'Fashion', 'Food and Agri', 'Health & Life Sciences', 'Tech', 'Toys'];
+  var ARCHETYPES = [
+    'Converter', 'Distributors', 'Ecoshell Branded', 'Ecosystem Player', 'Emerging Brand',
+    'Large Brands', 'Large Retailer', 'Material Manufacturer', 'Manufacturer Supplier',
+    'Mid Market', 'Specialty compounder'
+  ];
+  var CLIENT_STATUSES = ['lead', 'contact', 'client'];
+
+  function optionsHtml(values, selected, placeholder){
+    return '<option value="">' + placeholder + '</option>' + values.map(function(v){
+      return '<option value="' + esc(v) + '"' + (v === selected ? ' selected' : '') + '>' + esc(v) + '</option>';
+    }).join('');
+  }
+
   var clientDemo = {
     projects: [
       {
@@ -284,17 +298,23 @@
 
   function renderClientsView(data){
     var clients = data.clients || [];
+    var companies = data.companies || [];
     var archetypeCounts = countBy(clients, 'archetype');
     var industryCounts = countBy(clients, 'industry');
 
     var cards = clients.map(function(item){
       var details = [item.job_title, item.industry, item.archetype].filter(Boolean).join(' · ') || 'No profile details yet';
-      return adminCard(
+      return '<div class="client-row" data-open-client="' + esc(item.id) + '">' + adminCard(
         item.name || item.email,
         item.company_name || 'Company not set',
         details,
         item.status || 'lead'
-      );
+      ) + '</div>';
+    }).join('');
+
+    var companyCards = companies.map(function(item){
+      var details = [item.industry, item.archetype, item.country].filter(Boolean).join(' · ') || 'No company details yet';
+      return '<div class="client-row" data-open-company="' + esc(item.id) + '">' + adminCard(item.name, details, '', '') + '</div>';
     }).join('');
 
     list.innerHTML =
@@ -302,7 +322,133 @@
         breakdownTable('By archetype', archetypeCounts) +
         breakdownTable('By industry', industryCounts) +
       '</div>' +
-      (cards || '<article class="portal-card"><h2>No client accounts yet</h2><p>Client sign-ups will show up here.</p></article>');
+      (cards || '<article class="portal-card"><h2>No client accounts yet</h2><p>Client sign-ups will show up here.</p></article>') +
+      '<h3 style="margin-top:22px">Companies</h3>' +
+      (companyCards || '<article class="portal-card"><p class="portal-note">No companies yet.</p></article>');
+
+    list.querySelectorAll('[data-open-client]').forEach(function(el){
+      el.addEventListener('click', function(){ openClientEdit(el.getAttribute('data-open-client')); });
+    });
+    list.querySelectorAll('[data-open-company]').forEach(function(el){
+      el.addEventListener('click', function(){ openCompanyEdit(el.getAttribute('data-open-company')); });
+    });
+  }
+
+  function backToClients(){
+    kpis.hidden = false;
+    state.view = 'clients';
+    setActiveNav('clients');
+    renderAdminList();
+  }
+
+  function openClientEdit(id){
+    var data = state.data || adminDemo;
+    var client = (data.clients || []).find(function(c){ return String(c.id) === id; });
+    if(!client){
+      list.innerHTML = '<article class="portal-card"><h2>Client not found</h2><button type="button" class="btn" id="clientBackBtnErr">Back to clients</button></article>';
+      document.getElementById('clientBackBtnErr').addEventListener('click', backToClients);
+      return;
+    }
+
+    kpis.hidden = true;
+    ensureCountries().then(function(){
+      list.innerHTML =
+        '<button type="button" class="btn" id="clientBackBtn">Back to clients</button>' +
+        '<article class="portal-card">' +
+          '<div class="portal-card__top"><div><p class="portal-ref">' + esc(client.email) + '</p><h2>' + esc(client.name || client.email) + '</h2></div><span class="pill">' + esc(labelStatus(client.status || 'lead')) + '</span></div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="clientEditName">Name</label><input id="clientEditName" value="' + esc(client.name || '') + '"></div>' +
+            '<div class="field"><label for="clientEditStatus">Status</label><select id="clientEditStatus">' + CLIENT_STATUSES.map(function(v){ return '<option value="' + v + '"' + (v === (client.status || 'lead') ? ' selected' : '') + '>' + esc(labelStatus(v)) + '</option>'; }).join('') + '</select></div>' +
+          '</div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="clientEditCompanyName">Company name</label><input id="clientEditCompanyName" value="' + esc(client.company_name || '') + '"></div>' +
+            '<div class="field"><label for="clientEditJobTitle">Job title</label><input id="clientEditJobTitle" value="' + esc(client.job_title || '') + '"></div>' +
+          '</div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="clientEditPhone">Phone</label><input id="clientEditPhone" value="' + esc(client.phone || '') + '"></div>' +
+            '<div class="field"><label for="clientEditCountry">Country</label><select id="clientEditCountry">' + optionsHtml(countriesCache || [], client.country || '', 'Select a country') + '</select></div>' +
+          '</div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="clientEditIndustry">Industry</label><select id="clientEditIndustry">' + optionsHtml(INDUSTRIES, client.industry || '', 'Select an industry') + '</select></div>' +
+            '<div class="field"><label for="clientEditArchetype">Archetype</label><select id="clientEditArchetype">' + optionsHtml(ARCHETYPES, client.archetype || '', 'Select an archetype') + '</select></div>' +
+          '</div>' +
+          '<button type="button" class="btn btn--solid" id="clientEditSaveBtn">Save client</button>' +
+          '<p class="portal-status" id="clientEditStatusMsg"></p>' +
+        '</article>';
+
+      document.getElementById('clientBackBtn').addEventListener('click', backToClients);
+      document.getElementById('clientEditSaveBtn').addEventListener('click', function(){
+        var statusMsg = document.getElementById('clientEditStatusMsg');
+        statusMsg.textContent = 'Saving...';
+        statusMsg.classList.remove('is-error');
+        patchJSON('/api/admin/clients', {
+          id: client.id,
+          name: document.getElementById('clientEditName').value,
+          status: document.getElementById('clientEditStatus').value,
+          company_name: document.getElementById('clientEditCompanyName').value,
+          job_title: document.getElementById('clientEditJobTitle').value,
+          phone: document.getElementById('clientEditPhone').value,
+          country: document.getElementById('clientEditCountry').value,
+          industry: document.getElementById('clientEditIndustry').value,
+          archetype: document.getElementById('clientEditArchetype').value
+        }).then(function(result){
+          if(!result.ok){
+            statusMsg.textContent = result.body.error || 'Could not save.';
+            statusMsg.classList.add('is-error');
+            return;
+          }
+          loadAdminDashboard(state.sessionToken);
+        });
+      });
+    });
+  }
+
+  function openCompanyEdit(id){
+    var data = state.data || adminDemo;
+    var company = (data.companies || []).find(function(c){ return String(c.id) === id; });
+    if(!company){
+      list.innerHTML = '<article class="portal-card"><h2>Company not found</h2><button type="button" class="btn" id="companyBackBtnErr">Back to clients</button></article>';
+      document.getElementById('companyBackBtnErr').addEventListener('click', backToClients);
+      return;
+    }
+
+    kpis.hidden = true;
+    ensureCountries().then(function(){
+      list.innerHTML =
+        '<button type="button" class="btn" id="companyBackBtn">Back to clients</button>' +
+        '<article class="portal-card">' +
+          '<h2>' + esc(company.name) + '</h2>' +
+          '<div class="field"><label for="companyEditName">Company name</label><input id="companyEditName" value="' + esc(company.name || '') + '"></div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="companyEditIndustry">Industry</label><select id="companyEditIndustry">' + optionsHtml(INDUSTRIES, company.industry || '', 'Select an industry') + '</select></div>' +
+            '<div class="field"><label for="companyEditArchetype">Archetype</label><select id="companyEditArchetype">' + optionsHtml(ARCHETYPES, company.archetype || '', 'Select an archetype') + '</select></div>' +
+          '</div>' +
+          '<div class="field"><label for="companyEditCountry">Country</label><select id="companyEditCountry">' + optionsHtml(countriesCache || [], company.country || '', 'Select a country') + '</select></div>' +
+          '<button type="button" class="btn btn--solid" id="companyEditSaveBtn">Save company</button>' +
+          '<p class="portal-status" id="companyEditStatusMsg"></p>' +
+        '</article>';
+
+      document.getElementById('companyBackBtn').addEventListener('click', backToClients);
+      document.getElementById('companyEditSaveBtn').addEventListener('click', function(){
+        var statusMsg = document.getElementById('companyEditStatusMsg');
+        statusMsg.textContent = 'Saving...';
+        statusMsg.classList.remove('is-error');
+        patchJSON('/api/admin/companies', {
+          id: company.id,
+          name: document.getElementById('companyEditName').value,
+          industry: document.getElementById('companyEditIndustry').value,
+          archetype: document.getElementById('companyEditArchetype').value,
+          country: document.getElementById('companyEditCountry').value
+        }).then(function(result){
+          if(!result.ok){
+            statusMsg.textContent = result.body.error || 'Could not save.';
+            statusMsg.classList.add('is-error');
+            return;
+          }
+          loadAdminDashboard(state.sessionToken);
+        });
+      });
+    });
   }
 
   function newOpportunityFormHtml(){
@@ -435,36 +581,36 @@
     }).join('');
 
     var samplesHtml = (data.samples || []).map(function(s){
-      return '<p class="portal-note">' + esc(labelStatus(s.status)) + (s.tracking_number ? ' · Tracking ' + esc(s.tracking_number) : '') + (s.shipping_name ? ' · ' + esc(s.shipping_name) : '') + '</p>';
+      return '<p class="portal-note editable-row" data-edit="sample" data-id="' + esc(s.id) + '">' + esc(labelStatus(s.status)) + (s.tracking_number ? ' · Tracking ' + esc(s.tracking_number) : '') + (s.shipping_name ? ' · ' + esc(s.shipping_name) : '') + ' <span class="portal-ref">Edit</span></p>';
     }).join('') || '<p class="portal-note">No sample requests yet.</p>';
 
     var pilotsHtml = (data.pilots || []).map(function(p){
       var results = (p.pilot_results || []).map(function(r){
         return '<li>' + (r.outcome ? esc(r.outcome.toUpperCase()) + ' — ' : '') + esc(r.summary) + '</li>';
       }).join('');
-      return '<div class="portal-note"><b>' + esc(labelStatus(p.status)) + '</b>' + (p.success_criteria ? ' — ' + esc(p.success_criteria) : '') +
-        (p.start_date || p.end_date ? ' (' + esc(p.start_date || '?') + ' to ' + esc(p.end_date || '?') + ')' : '') +
+      return '<div class="portal-note editable-row" data-edit="pilot" data-id="' + esc(p.id) + '"><b>' + esc(labelStatus(p.status)) + '</b>' + (p.success_criteria ? ' — ' + esc(p.success_criteria) : '') +
+        (p.start_date || p.end_date ? ' (' + esc(p.start_date || '?') + ' to ' + esc(p.end_date || '?') + ')' : '') + ' <span class="portal-ref">Edit</span>' +
         (results ? '<ul class="portal-updates">' + results + '</ul>' : '') + '</div>';
     }).join('') || '<p class="portal-note">No pilots yet.</p>';
 
     var proposalsHtml = (data.proposals || []).map(function(p){
-      return '<p class="portal-note">' + esc(labelStatus(p.status)) + (p.amount ? ' · ' + esc(p.currency || 'USD') + ' ' + esc(p.amount) : '') + '</p>';
+      return '<p class="portal-note editable-row" data-edit="proposal" data-id="' + esc(p.id) + '">' + esc(labelStatus(p.status)) + (p.amount ? ' · ' + esc(p.currency || 'USD') + ' ' + esc(p.amount) : '') + ' <span class="portal-ref">Edit</span></p>';
     }).join('') || '<p class="portal-note">No proposals yet.</p>';
 
     var contractsHtml = (data.contracts || []).map(function(c){
-      return '<p class="portal-note">' + esc(labelStatus(c.status)) + (c.value ? ' · ' + esc(c.currency || 'USD') + ' ' + esc(c.value) : '') + '</p>';
+      return '<p class="portal-note editable-row" data-edit="contract" data-id="' + esc(c.id) + '">' + esc(labelStatus(c.status)) + (c.value ? ' · ' + esc(c.currency || 'USD') + ' ' + esc(c.value) : '') + ' <span class="portal-ref">Edit</span></p>';
     }).join('') || '<p class="portal-note">No contracts yet.</p>';
 
     var documentsHtml = (data.documents || []).map(function(d){
-      return '<li><a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(d.title) + '</a> · ' + esc(labelStatus(d.visibility)) + (d.document_type ? ' · ' + esc(d.document_type) : '') + '</li>';
+      return '<li class="editable-row" data-edit="document" data-id="' + esc(d.id) + '"><a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(d.title) + '</a> · ' + esc(labelStatus(d.visibility)) + (d.document_type ? ' · ' + esc(d.document_type) : '') + ' <span class="portal-ref">Edit</span></li>';
     }).join('') || '<li>No documents yet.</li>';
 
     var updatesHtml = (data.updates || []).map(function(u){
-      return '<li>' + esc(u.body) + '</li>';
+      return '<li class="editable-row" data-edit="clientUpdate" data-id="' + esc(u.id) + '">' + esc(u.body) + ' <span class="portal-ref">Edit</span></li>';
     }).join('') || '<li>No client updates yet.</li>';
 
     var notesHtml = (data.notes || []).map(function(n){
-      return '<div class="internal-note">' + esc(n.body) + ' <span class="portal-ref">— ' + esc(n.created_by) + '</span></div>';
+      return '<div class="internal-note editable-row" data-edit="note" data-id="' + esc(n.id) + '">' + esc(n.body) + ' <span class="portal-ref">— ' + esc(n.created_by) + ' · Edit</span></div>';
     }).join('') || '<p class="portal-note">No internal notes yet.</p>';
 
     list.innerHTML =
@@ -476,7 +622,12 @@
           '<div class="field"><label for="oppStageSelect">Pipeline stage</label><select id="oppStageSelect">' + stageOptions(project.status) + '</select></div>' +
           '<div class="field"><label for="oppOwnerSelect">Owner</label><select id="oppOwnerSelect">' + ownerOptions + '</select></div>' +
         '</div>' +
-        '<button type="button" class="btn btn--solid" id="oppSaveBtn">Save stage / owner</button>' +
+        '<div class="frow">' +
+          '<div class="field"><label for="oppPolymer">Polymer</label><input id="oppPolymer" value="' + esc(project.polymer || '') + '"></div>' +
+          '<div class="field"><label for="oppProcess">Process</label><input id="oppProcess" value="' + esc(project.process || '') + '"></div>' +
+        '</div>' +
+        '<div class="field"><label for="oppTarget">Target</label><input id="oppTarget" value="' + esc(project.target || '') + '"></div>' +
+        '<button type="button" class="btn btn--solid" id="oppSaveBtn">Save opportunity</button>' +
         '<p class="portal-status" id="oppSaveStatus"></p>' +
       '</article>' +
 
@@ -487,6 +638,7 @@
         '</div>' +
         '<div class="field"><label for="sampleStatus">Status</label><select id="sampleStatus"><option value="requested">Requested</option><option value="preparing">Preparing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option></select></div>' +
         '<button type="button" class="btn" id="sampleSaveBtn">Record sample</button>' +
+        '<button type="button" class="btn" id="sampleCancelBtn" hidden>Cancel edit</button>' +
       '</article>' +
 
       '<article class="portal-card"><h3>Pilot</h3>' + pilotsHtml +
@@ -499,6 +651,7 @@
           '<div class="field"><label for="pilotEnd">End date</label><input type="date" id="pilotEnd"></div>' +
         '</div>' +
         '<button type="button" class="btn" id="pilotSaveBtn">Record pilot</button>' +
+        '<button type="button" class="btn" id="pilotCancelBtn" hidden>Cancel edit</button>' +
         (data.pilots && data.pilots.length ? (
           '<div class="frow" style="margin-top:16px">' +
             '<div class="field"><label for="pilotResultOutcome">Result outcome (latest pilot)</label><select id="pilotResultOutcome"><option value="">Select outcome</option><option value="pass">Pass</option><option value="partial">Partial</option><option value="fail">Fail</option></select></div>' +
@@ -515,6 +668,7 @@
         '</div>' +
         '<div class="field"><label for="proposalStatus">Status</label><select id="proposalStatus"><option value="draft">Draft</option><option value="sent">Sent</option><option value="accepted">Accepted</option><option value="declined">Declined</option></select></div>' +
         '<button type="button" class="btn" id="proposalSaveBtn">Record proposal</button>' +
+        '<button type="button" class="btn" id="proposalCancelBtn" hidden>Cancel edit</button>' +
       '</article>' +
 
       '<article class="portal-card"><h3>Contract</h3>' + contractsHtml +
@@ -524,6 +678,7 @@
         '</div>' +
         '<div class="field"><label for="contractStatus">Status</label><select id="contractStatus"><option value="pending">Pending</option><option value="signed">Signed</option><option value="active">Active</option><option value="ended">Ended</option></select></div>' +
         '<button type="button" class="btn" id="contractSaveBtn">Record contract</button>' +
+        '<button type="button" class="btn" id="contractCancelBtn" hidden>Cancel edit</button>' +
       '</article>' +
 
       '<article class="portal-card"><h3>Documents</h3><ul class="portal-updates">' + documentsHtml + '</ul>' +
@@ -536,16 +691,19 @@
           '<div class="field"><label for="documentVisibility">Visibility</label><select id="documentVisibility"><option value="client">Client-visible</option><option value="internal">Internal only</option></select></div>' +
         '</div>' +
         '<button type="button" class="btn" id="documentSaveBtn">Add document</button>' +
+        '<button type="button" class="btn" id="documentCancelBtn" hidden>Cancel edit</button>' +
       '</article>' +
 
       '<article class="portal-card"><h3>Client-visible updates</h3><ul class="portal-updates">' + updatesHtml + '</ul>' +
         '<div class="field"><label for="clientUpdateBody">New update</label><input id="clientUpdateBody" placeholder="Shown to the client"></div>' +
         '<button type="button" class="btn" id="clientUpdateSaveBtn">Post client update</button>' +
+        '<button type="button" class="btn" id="clientUpdateCancelBtn" hidden>Cancel edit</button>' +
       '</article>' +
 
       '<article class="portal-card"><h3>Internal notes</h3>' + notesHtml +
         '<div class="field"><label for="internalNoteBody">New note</label><input id="internalNoteBody" placeholder="Admin only, never shown to the client"></div>' +
         '<button type="button" class="btn" id="internalNoteSaveBtn">Add internal note</button>' +
+        '<button type="button" class="btn" id="internalNoteCancelBtn" hidden>Cancel edit</button>' +
       '</article>';
 
     document.getElementById('oppBackBtn').addEventListener('click', backToOpportunities);
@@ -557,7 +715,10 @@
       patchJSON('/api/admin/projects', {
         id: project.id,
         status: document.getElementById('oppStageSelect').value,
-        owner_id: document.getElementById('oppOwnerSelect').value || null
+        owner_id: document.getElementById('oppOwnerSelect').value || null,
+        polymer: document.getElementById('oppPolymer').value,
+        process: document.getElementById('oppProcess').value,
+        target: document.getElementById('oppTarget').value
       }).then(function(result){
         if(!result.ok){
           saveStatus.textContent = result.body.error || 'Could not save.';
@@ -568,23 +729,216 @@
       });
     });
 
-    document.getElementById('sampleSaveBtn').addEventListener('click', function(){
-      postJSON('/api/admin/samples', {
-        project_id: project.id,
-        shipping_name: document.getElementById('sampleShippingName').value,
-        tracking_number: document.getElementById('sampleTracking').value,
-        status: document.getElementById('sampleStatus').value
-      }).then(function(){ openOpportunity(project.id); });
+    document.getElementById('clientUpdateSaveBtn').addEventListener('click', function(){
+      if(editing && editing.type === 'clientUpdate') return;
+      var body = document.getElementById('clientUpdateBody').value;
+      if(!body) return;
+      patchJSON('/api/admin/projects', {id: project.id, client_update: body}).then(function(){ openOpportunity(project.id); });
     });
 
-    document.getElementById('pilotSaveBtn').addEventListener('click', function(){
-      postJSON('/api/admin/pilots', {
-        project_id: project.id,
-        success_criteria: document.getElementById('pilotCriteria').value,
-        status: document.getElementById('pilotStatus').value,
-        start_date: document.getElementById('pilotStart').value || null,
-        end_date: document.getElementById('pilotEnd').value || null
-      }).then(function(){ openOpportunity(project.id); });
+    document.getElementById('internalNoteSaveBtn').addEventListener('click', function(){
+      if(editing && editing.type === 'note') return;
+      var body = document.getElementById('internalNoteBody').value;
+      if(!body) return;
+      patchJSON('/api/admin/projects', {id: project.id, internal_note: body}).then(function(){ openOpportunity(project.id); });
+    });
+
+    // Record sections: each has a create form that becomes an edit form when
+    // an existing entry is clicked, switching the save button to a PATCH
+    // against the record's id instead of a POST against the project.
+    var recordSections = {
+      sample: {
+        items: data.samples || [],
+        saveBtn: 'sampleSaveBtn', cancelBtn: 'sampleCancelBtn',
+        createUrl: '/api/admin/samples', updateUrl: '/api/admin/samples',
+        createLabel: 'Record sample', updateLabel: 'Update sample',
+        populate: function(r){
+          document.getElementById('sampleShippingName').value = r.shipping_name || '';
+          document.getElementById('sampleTracking').value = r.tracking_number || '';
+          document.getElementById('sampleStatus').value = r.status || 'requested';
+        },
+        reset: function(){
+          document.getElementById('sampleShippingName').value = '';
+          document.getElementById('sampleTracking').value = '';
+          document.getElementById('sampleStatus').value = 'requested';
+        },
+        payload: function(){
+          return {
+            shipping_name: document.getElementById('sampleShippingName').value,
+            tracking_number: document.getElementById('sampleTracking').value,
+            status: document.getElementById('sampleStatus').value
+          };
+        }
+      },
+      pilot: {
+        items: data.pilots || [],
+        saveBtn: 'pilotSaveBtn', cancelBtn: 'pilotCancelBtn',
+        createUrl: '/api/admin/pilots', updateUrl: '/api/admin/pilots',
+        createLabel: 'Record pilot', updateLabel: 'Update pilot',
+        populate: function(r){
+          document.getElementById('pilotCriteria').value = r.success_criteria || '';
+          document.getElementById('pilotStatus').value = r.status || 'planned';
+          document.getElementById('pilotStart').value = r.start_date || '';
+          document.getElementById('pilotEnd').value = r.end_date || '';
+        },
+        reset: function(){
+          document.getElementById('pilotCriteria').value = '';
+          document.getElementById('pilotStatus').value = 'planned';
+          document.getElementById('pilotStart').value = '';
+          document.getElementById('pilotEnd').value = '';
+        },
+        payload: function(){
+          return {
+            success_criteria: document.getElementById('pilotCriteria').value,
+            status: document.getElementById('pilotStatus').value,
+            start_date: document.getElementById('pilotStart').value || null,
+            end_date: document.getElementById('pilotEnd').value || null
+          };
+        }
+      },
+      proposal: {
+        items: data.proposals || [],
+        saveBtn: 'proposalSaveBtn', cancelBtn: 'proposalCancelBtn',
+        createUrl: '/api/admin/proposals', updateUrl: '/api/admin/proposals',
+        createLabel: 'Record proposal', updateLabel: 'Update proposal',
+        populate: function(r){
+          document.getElementById('proposalAmount').value = r.amount || '';
+          document.getElementById('proposalCurrency').value = r.currency || 'USD';
+          document.getElementById('proposalStatus').value = r.status || 'draft';
+        },
+        reset: function(){
+          document.getElementById('proposalAmount').value = '';
+          document.getElementById('proposalCurrency').value = 'USD';
+          document.getElementById('proposalStatus').value = 'draft';
+        },
+        payload: function(){
+          return {
+            amount: document.getElementById('proposalAmount').value || null,
+            currency: document.getElementById('proposalCurrency').value || 'USD',
+            status: document.getElementById('proposalStatus').value
+          };
+        }
+      },
+      contract: {
+        items: data.contracts || [],
+        saveBtn: 'contractSaveBtn', cancelBtn: 'contractCancelBtn',
+        createUrl: '/api/admin/contracts', updateUrl: '/api/admin/contracts',
+        createLabel: 'Record contract', updateLabel: 'Update contract',
+        populate: function(r){
+          document.getElementById('contractValue').value = r.value || '';
+          document.getElementById('contractCurrency').value = r.currency || 'USD';
+          document.getElementById('contractStatus').value = r.status || 'pending';
+        },
+        reset: function(){
+          document.getElementById('contractValue').value = '';
+          document.getElementById('contractCurrency').value = 'USD';
+          document.getElementById('contractStatus').value = 'pending';
+        },
+        payload: function(){
+          return {
+            value: document.getElementById('contractValue').value || null,
+            currency: document.getElementById('contractCurrency').value || 'USD',
+            status: document.getElementById('contractStatus').value
+          };
+        }
+      },
+      document: {
+        items: data.documents || [],
+        saveBtn: 'documentSaveBtn', cancelBtn: 'documentCancelBtn',
+        createUrl: '/api/admin/documents', updateUrl: '/api/admin/documents',
+        createLabel: 'Add document', updateLabel: 'Update document',
+        populate: function(r){
+          document.getElementById('documentTitle').value = r.title || '';
+          document.getElementById('documentUrl').value = r.url || '';
+          document.getElementById('documentType').value = r.document_type || '';
+          document.getElementById('documentVisibility').value = r.visibility || 'client';
+        },
+        reset: function(){
+          document.getElementById('documentTitle').value = '';
+          document.getElementById('documentUrl').value = '';
+          document.getElementById('documentType').value = '';
+          document.getElementById('documentVisibility').value = 'client';
+        },
+        payload: function(){
+          return {
+            title: document.getElementById('documentTitle').value,
+            url: document.getElementById('documentUrl').value,
+            document_type: document.getElementById('documentType').value,
+            visibility: document.getElementById('documentVisibility').value
+          };
+        }
+      },
+      clientUpdate: {
+        items: data.updates || [],
+        saveBtn: 'clientUpdateSaveBtn', cancelBtn: 'clientUpdateCancelBtn',
+        createUrl: null, updateUrl: '/api/admin/updates',
+        createLabel: 'Post client update', updateLabel: 'Update',
+        populate: function(r){ document.getElementById('clientUpdateBody').value = r.body || ''; },
+        reset: function(){ document.getElementById('clientUpdateBody').value = ''; },
+        payload: function(){ return {body: document.getElementById('clientUpdateBody').value}; }
+      },
+      note: {
+        items: data.notes || [],
+        saveBtn: 'internalNoteSaveBtn', cancelBtn: 'internalNoteCancelBtn',
+        createUrl: null, updateUrl: '/api/admin/notes',
+        createLabel: 'Add internal note', updateLabel: 'Update note',
+        populate: function(r){ document.getElementById('internalNoteBody').value = r.body || ''; },
+        reset: function(){ document.getElementById('internalNoteBody').value = ''; },
+        payload: function(){ return {body: document.getElementById('internalNoteBody').value}; }
+      }
+    };
+
+    var editing = null; // {type, id}
+
+    function stopEditing(type){
+      var cfg = recordSections[type];
+      editing = null;
+      cfg.reset();
+      document.getElementById(cfg.saveBtn).textContent = cfg.createLabel;
+      document.getElementById(cfg.cancelBtn).hidden = true;
+    }
+
+    Object.keys(recordSections).forEach(function(type){
+      var cfg = recordSections[type];
+      var cancelBtn = document.getElementById(cfg.cancelBtn);
+      if(cancelBtn) cancelBtn.addEventListener('click', function(){ stopEditing(type); });
+    });
+
+    list.querySelectorAll('[data-edit]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var type = el.getAttribute('data-edit');
+        var id = el.getAttribute('data-id');
+        var cfg = recordSections[type];
+        var record = cfg.items.find(function(item){ return String(item.id) === id; });
+        if(!cfg || !record) return;
+        editing = {type: type, id: id};
+        cfg.populate(record);
+        document.getElementById(cfg.saveBtn).textContent = cfg.updateLabel;
+        document.getElementById(cfg.cancelBtn).hidden = false;
+        el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+      });
+    });
+
+    Object.keys(recordSections).forEach(function(type){
+      var cfg = recordSections[type];
+      var btn = document.getElementById(cfg.saveBtn);
+      if(!btn) return;
+      btn.addEventListener('click', function(){
+        if(editing && editing.type === type){
+          patchJSON(cfg.updateUrl, Object.assign({id: editing.id}, cfg.payload())).then(function(result){
+            if(!result.ok) return;
+            stopEditing(type);
+            openOpportunity(project.id);
+          });
+          return;
+        }
+        if(!cfg.createUrl) return;
+        var body = Object.assign({project_id: project.id}, cfg.payload());
+        postJSON(cfg.createUrl, body).then(function(result){
+          if(!result.ok) return;
+          openOpportunity(project.id);
+        });
+      });
     });
 
     var pilotResultBtn = document.getElementById('pilotResultSaveBtn');
@@ -598,46 +952,6 @@
         }).then(function(){ openOpportunity(project.id); });
       });
     }
-
-    document.getElementById('proposalSaveBtn').addEventListener('click', function(){
-      postJSON('/api/admin/proposals', {
-        project_id: project.id,
-        amount: document.getElementById('proposalAmount').value || null,
-        currency: document.getElementById('proposalCurrency').value || 'USD',
-        status: document.getElementById('proposalStatus').value
-      }).then(function(){ openOpportunity(project.id); });
-    });
-
-    document.getElementById('contractSaveBtn').addEventListener('click', function(){
-      postJSON('/api/admin/contracts', {
-        project_id: project.id,
-        value: document.getElementById('contractValue').value || null,
-        currency: document.getElementById('contractCurrency').value || 'USD',
-        status: document.getElementById('contractStatus').value
-      }).then(function(){ openOpportunity(project.id); });
-    });
-
-    document.getElementById('documentSaveBtn').addEventListener('click', function(){
-      postJSON('/api/admin/documents', {
-        project_id: project.id,
-        title: document.getElementById('documentTitle').value,
-        url: document.getElementById('documentUrl').value,
-        document_type: document.getElementById('documentType').value,
-        visibility: document.getElementById('documentVisibility').value
-      }).then(function(){ openOpportunity(project.id); });
-    });
-
-    document.getElementById('clientUpdateSaveBtn').addEventListener('click', function(){
-      var body = document.getElementById('clientUpdateBody').value;
-      if(!body) return;
-      patchJSON('/api/admin/projects', {id: project.id, client_update: body}).then(function(){ openOpportunity(project.id); });
-    });
-
-    document.getElementById('internalNoteSaveBtn').addEventListener('click', function(){
-      var body = document.getElementById('internalNoteBody').value;
-      if(!body) return;
-      patchJSON('/api/admin/projects', {id: project.id, internal_note: body}).then(function(){ openOpportunity(project.id); });
-    });
   }
 
   function loadAdminDashboard(sessionToken){
