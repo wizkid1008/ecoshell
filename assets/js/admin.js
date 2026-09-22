@@ -117,42 +117,18 @@
       });
   }
 
-  function exchangeMagicToken(token){
-    setStatus('Verifying your login link...', false);
-    list.innerHTML = '<article class="portal-card"><p>Verifying login link...</p></article>';
-
-    fetch('/api/admin/session?token=' + encodeURIComponent(token))
-      .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
-      .then(function(result){
-        var url = new URL(window.location.href);
-        url.searchParams.delete('token');
-        window.history.replaceState({}, document.title, url.pathname + url.search);
-
-        if(!result.ok){
-          setStatus(result.body.error || 'This login link is invalid or has expired.', true);
-          return;
-        }
-
-        sessionStorage.setItem(SESSION_KEY, result.body.session_token);
-        setStatus('', false);
-        loadOverview(result.body.session_token);
-      })
-      .catch(function(){
-        setStatus('Could not verify the login link. Please request a new one.', true);
-      });
-  }
-
   form.addEventListener('submit', function(event){
     event.preventDefault();
     var email = form.adminEmail.value.trim();
+    var password = form.adminPassword.value;
     var submitButton = form.querySelector('button[type="submit"]');
     if(submitButton) submitButton.disabled = true;
-    setStatus('Sending login link...', false);
+    setStatus('Signing in...', false);
 
-    fetch('/api/admin/request-link', {
+    fetch('/api/admin/login', {
       method: 'POST',
       headers: {'content-type': 'application/json'},
-      body: JSON.stringify({email: email})
+      body: JSON.stringify({email: email, password: password})
     })
       .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
       .then(function(result){
@@ -161,8 +137,9 @@
           setStatus(result.body.error || 'Something went wrong. Please try again.', true);
           return;
         }
-        setStatus('Check your email for a login link. It expires in 15 minutes.', false);
-        form.reset();
+        sessionStorage.setItem(SESSION_KEY, result.body.session_token);
+        setStatus('', false);
+        loadOverview(result.body.session_token);
       })
       .catch(function(){
         if(submitButton) submitButton.disabled = false;
@@ -174,11 +151,6 @@
   renderKpis(demo);
   renderList();
 
-  var urlToken = new URL(window.location.href).searchParams.get('token');
-  if(urlToken){
-    exchangeMagicToken(urlToken);
-  } else {
-    var storedSession = sessionStorage.getItem(SESSION_KEY);
-    if(storedSession) loadOverview(storedSession);
-  }
+  var storedSession = sessionStorage.getItem(SESSION_KEY);
+  if(storedSession) loadOverview(storedSession);
 })();

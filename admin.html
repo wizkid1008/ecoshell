@@ -36,10 +36,14 @@
           <label for="adminEmail">Admin email</label>
           <input id="adminEmail" name="adminEmail" type="email" autocomplete="email" placeholder="name@ecoshell.eco" required>
         </div>
-        <button class="btn btn--solid" type="submit">Send login link</button>
+        <div class="field">
+          <label for="adminPassword">Password</label>
+          <input id="adminPassword" name="adminPassword" type="password" autocomplete="current-password" placeholder="At least 8 characters" minlength="8" required>
+        </div>
+        <button class="btn btn--solid" type="submit">Sign in</button>
       </form>
       <p class="portal-status" id="adminLoginStatus" role="status" aria-live="polite"></p>
-      <p class="portal__hint">Enter an email with admin access and we'll send a one-time login link, valid for 15 minutes.</p>
+      <p class="portal__hint">Only emails already listed as admins can sign in. First sign-in for a listed email sets its password.</p>
     </div>
   </section>
 

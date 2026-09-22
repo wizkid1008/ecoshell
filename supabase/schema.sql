@@ -68,11 +68,18 @@ create table if not exists project_updates (
   created_at timestamptz not null default now()
 );
 
+create table if not exists client_accounts (
+  id uuid primary key default gen_random_uuid(),
+  email text unique not null,
+  password_hash text not null,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists client_login_tokens (
   id uuid primary key default gen_random_uuid(),
   email text not null,
   token text unique not null,
-  kind text not null default 'magic',
+  kind text not null default 'session',
   expires_at timestamptz not null,
   used_at timestamptz,
   created_at timestamptz not null default now()
@@ -82,6 +89,7 @@ create table if not exists admin_users (
   id uuid primary key default gen_random_uuid(),
   email text unique not null,
   name text,
+  password_hash text,
   created_at timestamptz not null default now()
 );
 
@@ -89,7 +97,7 @@ create table if not exists admin_login_tokens (
   id uuid primary key default gen_random_uuid(),
   email text not null,
   token text unique not null,
-  kind text not null default 'magic',
+  kind text not null default 'session',
   expires_at timestamptz not null,
   used_at timestamptz,
   created_at timestamptz not null default now()
@@ -138,6 +146,9 @@ alter table project_updates add column if not exists body text;
 alter table project_updates add column if not exists created_by text not null default 'admin';
 alter table project_updates add column if not exists created_at timestamptz not null default now();
 
+alter table admin_users add column if not exists password_hash text;
+
+create index if not exists client_accounts_email_idx on client_accounts(lower(email));
 create index if not exists enquiries_email_idx on enquiries(lower(email));
 create index if not exists projects_company_idx on projects(company_id);
 create index if not exists sample_requests_project_idx on sample_requests(project_id);
@@ -157,6 +168,7 @@ alter table project_updates enable row level security;
 alter table client_login_tokens enable row level security;
 alter table admin_users enable row level security;
 alter table admin_login_tokens enable row level security;
+alter table client_accounts enable row level security;
 
 drop policy if exists "service role manages companies" on companies;
 drop policy if exists "service role manages enquiries" on enquiries;
@@ -167,6 +179,7 @@ drop policy if exists "service role manages project updates" on project_updates;
 drop policy if exists "service role manages client login tokens" on client_login_tokens;
 drop policy if exists "service role manages admin users" on admin_users;
 drop policy if exists "service role manages admin login tokens" on admin_login_tokens;
+drop policy if exists "service role manages client accounts" on client_accounts;
 
 create policy "service role manages companies" on companies
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
@@ -195,7 +208,12 @@ create policy "service role manages admin users" on admin_users
 create policy "service role manages admin login tokens" on admin_login_tokens
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
--- Seed the first admin so you're not locked out. Add more admins by inserting more rows here.
+create policy "service role manages client accounts" on client_accounts
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+-- Seed the first admin so you're not locked out. Their password_hash starts null;
+-- the first successful /api/admin/login attempt for this email sets it.
+-- Add more admins by inserting more rows here.
 insert into admin_users (email, name)
 values ('kyle.a.newell@gmail.com', 'Kyle Newell')
 on conflict (email) do nothing;

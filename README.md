@@ -35,43 +35,42 @@ directly. The contact form submits to `/api/enquiries`, which creates or finds
 a company, stores the enquiry, opens a project and adds the first
 client-visible update.
 
-Prototype portal pages:
+Prototype portal pages, both using plain email + password login (no email
+sending involved — logging in is instant):
 
-- `client.html` — anyone requests a one-time login link by email (sent via
-  Resend), then views their projects, sample status and project updates (empty
-  if that email has no projects yet).
-- `admin.html` — a one-time login link, restricted to emails listed in the
-  `admin_users` table, gates a dashboard of companies, enquiries, projects and
-  sample requests. Add or remove admins by editing that table directly.
+- `client.html` — sign in with any email and a password. The first sign-in
+  for a given email creates the account; later sign-ins verify the password.
+  Shows that account's projects, sample status and project updates (empty if
+  none exist yet).
+- `admin.html` — sign in with an email listed in the `admin_users` table. The
+  first sign-in for a listed email sets its password; unlisted emails are
+  rejected. Add or remove admins by editing that table directly.
 
 Backend files:
 
 - `src/index.js` routes incoming requests to the right handler or falls back
   to static asset serving.
 - `src/api/enquiries.js` handles website enquiries.
-- `src/api/clientRequestLink.js` emails a one-time client magic login link.
-- `src/api/clientSession.js` exchanges a client magic link token for a session token.
+- `src/api/clientLogin.js` creates or authenticates a client account and
+  issues a session token.
 - `src/api/clientProjects.js` returns projects for the logged-in client session.
-- `src/api/adminRequestLink.js` emails a one-time admin magic login link, only
-  if the email is in `admin_users`.
-- `src/api/adminSession.js` exchanges an admin magic link token for a session token.
+- `src/api/adminLogin.js` authenticates (or claims, on first sign-in) an
+  allow-listed admin account and issues a session token.
 - `src/api/adminOverview.js` returns the admin dashboard data.
 - `src/api/adminProjects.js` updates project status and client updates.
-- `src/lib/supabase.js` shared Supabase REST + email helpers.
+- `src/lib/supabase.js` shared Supabase REST helpers.
+- `src/lib/password.js` PBKDF2 password hashing/verification.
 - `src/lib/adminAuth.js` validates an admin session token.
 - `supabase/schema.sql` defines the prototype database tables and RLS policies,
-  and seeds the first admin user.
+  and seeds the first admin user (password unset until their first sign-in).
 
 Required Cloudflare environment variables:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`
-- `PUBLIC_SITE_URL`
 
 The portal pages include demo fallback data so the prototype can be explored
-before the Cloudflare/Supabase/Resend environment variables are connected.
+before the Cloudflare/Supabase environment variables are connected.
 
 ## Deployment
 

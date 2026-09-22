@@ -39,10 +39,14 @@
           <label for="clientEmail">Work email</label>
           <input id="clientEmail" name="clientEmail" type="email" autocomplete="email" placeholder="name@company.com" required>
         </div>
-        <button class="btn btn--solid" type="submit">Send login link</button>
+        <div class="field">
+          <label for="clientPassword">Password</label>
+          <input id="clientPassword" name="clientPassword" type="password" autocomplete="current-password" placeholder="At least 8 characters" minlength="8" required>
+        </div>
+        <button class="btn btn--solid" type="submit">Sign in</button>
       </form>
       <p class="portal-status" id="clientLoginStatus" role="status" aria-live="polite"></p>
-      <p class="portal__hint">Enter your work email and we'll send a one-time login link, valid for 15 minutes.</p>
+      <p class="portal__hint">First time here? Enter any email and a password — that creates your account. Returning? Use the same email and password to sign in.</p>
     </div>
   </section>
 

@@ -54,20 +54,3 @@ export function generateToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
-
-export async function sendEmail(env, {to, subject, html}) {
-  const apiKey = await resolveSecret(env.RESEND_API_KEY);
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({from: env.RESEND_FROM_EMAIL, to, subject, html})
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to send email: ${text}`);
-  }
-}

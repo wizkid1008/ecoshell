@@ -8,16 +8,9 @@
     "run_worker_first": true
   },
   "vars": {
-    "SUPABASE_URL": "https://bogzsjzqdewbsgglqvpr.supabase.co",
-    "RESEND_FROM_EMAIL": "onboarding@resend.dev",
-    "PUBLIC_SITE_URL": "https://ecoshell.kyle-a-newell.workers.dev"
+    "SUPABASE_URL": "https://bogzsjzqdewbsgglqvpr.supabase.co"
   },
   "secrets_store_secrets": [
-    {
-      "binding": "RESEND_API_KEY",
-      "store_id": "bd74015265004924a38cb772e6fbb2f9",
-      "secret_name": "RESEND_API_KEY"
-    },
     {
       "binding": "SUPABASE_SERVICE_ROLE_KEY",
       "store_id": "bd74015265004924a38cb772e6fbb2f9",

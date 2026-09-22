@@ -66,7 +66,7 @@
     ].join('');
 
     if(!projects.length){
-      list.innerHTML = '<article class="portal-card"><h2>No projects found</h2><p>Use the same email submitted through the contact form, or ask Ecoshell to invite your company.</p></article>';
+      list.innerHTML = '<article class="portal-card"><h2>No projects found</h2><p>Once you submit an enquiry through the contact form, it will show up here.</p></article>';
       return;
     }
 
@@ -92,7 +92,7 @@
       .then(function(res){
         if(res.status === 401){
           sessionStorage.removeItem(SESSION_KEY);
-          setStatus('Your session has expired. Please request a new login link.', true);
+          setStatus('Your session has expired. Please sign in again.', true);
           render(demo);
           return null;
         }
@@ -108,44 +108,18 @@
       });
   }
 
-  function exchangeMagicToken(token){
-    setStatus('Verifying your login link...', false);
-    list.innerHTML = '<article class="portal-card"><p>Verifying login link...</p></article>';
-
-    fetch('/api/client/session?token=' + encodeURIComponent(token))
-      .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
-      .then(function(result){
-        var url = new URL(window.location.href);
-        url.searchParams.delete('token');
-        window.history.replaceState({}, document.title, url.pathname + url.search);
-
-        if(!result.ok){
-          setStatus(result.body.error || 'This login link is invalid or has expired.', true);
-          render(demo);
-          return;
-        }
-
-        sessionStorage.setItem(SESSION_KEY, result.body.session_token);
-        setStatus('', false);
-        loadProjects(result.body.session_token);
-      })
-      .catch(function(){
-        setStatus('Could not verify the login link. Please request a new one.', true);
-        render(demo);
-      });
-  }
-
   form.addEventListener('submit', function(event){
     event.preventDefault();
     var email = form.clientEmail.value.trim();
+    var password = form.clientPassword.value;
     var submitButton = form.querySelector('button[type="submit"]');
     if(submitButton) submitButton.disabled = true;
-    setStatus('Sending login link...', false);
+    setStatus('Signing in...', false);
 
-    fetch('/api/client/request-link', {
+    fetch('/api/client/login', {
       method: 'POST',
       headers: {'content-type': 'application/json'},
-      body: JSON.stringify({email: email})
+      body: JSON.stringify({email: email, password: password})
     })
       .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
       .then(function(result){
@@ -154,8 +128,9 @@
           setStatus(result.body.error || 'Something went wrong. Please try again.', true);
           return;
         }
-        setStatus('Check your email for a login link. It expires in 15 minutes.', false);
-        form.reset();
+        sessionStorage.setItem(SESSION_KEY, result.body.session_token);
+        setStatus('', false);
+        loadProjects(result.body.session_token);
       })
       .catch(function(){
         if(submitButton) submitButton.disabled = false;
@@ -163,15 +138,10 @@
       });
   });
 
-  var urlToken = new URL(window.location.href).searchParams.get('token');
-  if(urlToken){
-    exchangeMagicToken(urlToken);
+  var storedSession = sessionStorage.getItem(SESSION_KEY);
+  if(storedSession){
+    loadProjects(storedSession);
   } else {
-    var storedSession = sessionStorage.getItem(SESSION_KEY);
-    if(storedSession){
-      loadProjects(storedSession);
-    } else {
-      render(demo);
-    }
+    render(demo);
   }
 })();

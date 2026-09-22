@@ -264,7 +264,7 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 .portal__hint{color:#C2D4C8;font-size:15px;max-width:680px}
 .portal-status{color:#C2D4C8;font-size:15px;max-width:680px;min-height:1.2em}
 .portal-status.is-error{color:#F3A6A0}
-.portal-login{background:rgba(255,255,255,.08);border-color:var(--line-dark);display:grid;grid-template-columns:minmax(220px,420px) auto;gap:16px;align-items:end;max-width:720px;padding:22px}
+.portal-login{background:rgba(255,255,255,.08);border-color:var(--line-dark);display:grid;grid-template-columns:minmax(200px,320px) minmax(200px,320px) auto;gap:16px;align-items:end;max-width:900px;padding:22px}
 .portal-login .field label{color:#C2D4C8}
 .portal-login .field input{background:transparent;color:#fff;border-bottom-color:rgba(255,255,255,.32)}
 .portal-login .field input::placeholder{color:#9FB4A7}
