@@ -266,6 +266,7 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 
 /* ---------- auth card ---------- */
 .auth{background:var(--deep);min-height:calc(100vh - 75px);display:flex;align-items:center;justify-content:center;padding:48px 20px}
+.auth[hidden]{display:none}
 .auth-card{background:rgba(255,255,255,.06);border:1px solid var(--line-dark);max-width:400px;width:100%;padding:clamp(28px,4vw,44px)}
 .auth-card .eyebrow{color:var(--green-lift)}
 .auth-card h1{color:#fff;font-size:clamp(26px,3vw,32px);font-weight:300;margin:6px 0 26px}
