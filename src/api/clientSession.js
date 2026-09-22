@@ -1,6 +1,6 @@
-import {cleanString, generateToken, json, requireEnv, supabaseFetch} from '../../_shared/supabase.js';
+import {cleanString, generateToken, json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 
-export async function onRequestGet({request, env}) {
+export async function clientSession({request, env}) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']);
   if (envError) return json({error: envError}, {status: 500});
 

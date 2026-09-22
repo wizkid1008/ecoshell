@@ -1,8 +1,8 @@
-import {cleanString, generateToken, json, requireEnv, sendEmail, supabaseFetch} from '../../_shared/supabase.js';
+import {cleanString, generateToken, json, requireEnv, sendEmail, supabaseFetch} from '../lib/supabase.js';
 
 const GENERIC_RESPONSE = {ok: true, message: 'If that email has projects with Ecoshell, a login link has been sent.'};
 
-export async function onRequestPost({request, env}) {
+export async function clientRequestLink({request, env}) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'PUBLIC_SITE_URL']);
   if (envError) return json({error: envError}, {status: 500});
 

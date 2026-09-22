@@ -1,11 +1,11 @@
-import {json, requireEnv, supabaseFetch} from '../../_shared/supabase.js';
+import {json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 
 function isAdmin(request, env) {
   const token = request.headers.get('x-admin-token');
   return env.ADMIN_PORTAL_TOKEN && token === env.ADMIN_PORTAL_TOKEN;
 }
 
-export async function onRequestGet({request, env}) {
+export async function adminOverview({request, env}) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'ADMIN_PORTAL_TOKEN']);
   if (envError) return json({error: envError}, {status: 500});
   if (!isAdmin(request, env)) return json({error: 'Admin access required.'}, {status: 401});

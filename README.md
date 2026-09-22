@@ -29,23 +29,30 @@ Then open http://localhost:8791.
 
 ## Backend prototype
 
-The contact form submits to a Cloudflare Pages Function at `/api/enquiries`.
-That API creates or finds a company, stores the enquiry, opens a project and
-adds the first client-visible update.
+The site is a single Cloudflare Worker (`src/index.js`) that serves the static
+pages via the Workers Static Assets binding and handles `/api/*` routes
+directly. The contact form submits to `/api/enquiries`, which creates or finds
+a company, stores the enquiry, opens a project and adds the first
+client-visible update.
 
 Prototype portal pages:
 
-- `client.html` lets a client enter their work email and view their projects,
-  sample status and project updates.
-- `admin.html` lets an admin review companies, enquiries, projects and sample
-  requests.
+- `client.html` — a client requests a one-time login link by email (sent via
+  Resend), then views their projects, sample status and project updates.
+- `admin.html` — an admin token gates a dashboard of companies, enquiries,
+  projects and sample requests.
 
 Backend files:
 
-- `functions/api/enquiries/index.js` handles website enquiries.
-- `functions/api/client/projects.js` returns projects linked to a client email.
-- `functions/api/admin/overview.js` returns the admin dashboard data.
-- `functions/api/admin/projects.js` updates project status and client updates.
+- `src/index.js` routes incoming requests to the right handler or falls back
+  to static asset serving.
+- `src/api/enquiries.js` handles website enquiries.
+- `src/api/clientRequestLink.js` emails a one-time magic login link.
+- `src/api/clientSession.js` exchanges a magic link token for a session token.
+- `src/api/clientProjects.js` returns projects for the logged-in client session.
+- `src/api/adminOverview.js` returns the admin dashboard data.
+- `src/api/adminProjects.js` updates project status and client updates.
+- `src/lib/supabase.js` shared Supabase REST + email helpers.
 - `supabase/schema.sql` defines the prototype database tables and RLS policies.
 
 Required Cloudflare environment variables:
@@ -53,11 +60,14 @@ Required Cloudflare environment variables:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `ADMIN_PORTAL_TOKEN`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- `PUBLIC_SITE_URL`
 
 The portal pages include demo fallback data so the prototype can be explored
-before the Cloudflare/Supabase environment variables are connected.
+before the Cloudflare/Supabase/Resend environment variables are connected.
 
 ## Deployment
 
-Hosted on Cloudflare Pages, connected to this GitHub repo — pushes to `main`
-deploy automatically.
+Hosted on a Cloudflare Worker with static assets, connected to this GitHub
+repo — pushes to `main` deploy automatically via `wrangler.jsonc`.
