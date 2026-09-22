@@ -211,9 +211,11 @@ create policy "service role manages admin login tokens" on admin_login_tokens
 create policy "service role manages client accounts" on client_accounts
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
--- Seed the first admin so you're not locked out. Their password_hash starts null;
--- the first successful /api/admin/login attempt for this email sets it.
+-- Seed admins so you're not locked out. Each password_hash starts null;
+-- the first successful /api/admin/login attempt for that email sets it.
 -- Add more admins by inserting more rows here.
 insert into admin_users (email, name)
-values ('kyle.a.newell@gmail.com', 'Kyle Newell')
+values
+  ('kyle.a.newell@gmail.com', 'Kyle Newell'),
+  ('kyle@ecoshell.eco', 'Kyle Newell')
 on conflict (email) do nothing;
