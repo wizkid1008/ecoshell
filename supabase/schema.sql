@@ -327,6 +327,6 @@ delete from users where email = 'kyle.a.newell@gmail.com';
 insert into users (email, name, role)
 values
   ('kyle@ecoshell.eco', 'Kyle Newell', 'admin'),
-  ('andrew@ecoshell.eco', 'Andrew Bill', 'admin'),
+  ('andrew@ecoshell.eco', 'Andrew Bliss', 'admin'),
   ('doug@ecoshell.eco', 'Doug Hardesty', 'admin')
 on conflict (email) do nothing;
