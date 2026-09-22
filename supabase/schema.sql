@@ -1,5 +1,13 @@
 create extension if not exists pgcrypto;
 
+-- One-time cleanup: replaces the old split admin_users/client_accounts/
+-- admin_login_tokens/client_login_tokens tables with a single users table.
+-- Safe to run even if these were already dropped.
+drop table if exists admin_users cascade;
+drop table if exists client_accounts cascade;
+drop table if exists admin_login_tokens cascade;
+drop table if exists client_login_tokens cascade;
+
 create table if not exists companies (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -68,32 +76,16 @@ create table if not exists project_updates (
   created_at timestamptz not null default now()
 );
 
-create table if not exists client_accounts (
+create table if not exists users (
   id uuid primary key default gen_random_uuid(),
   email text unique not null,
-  password_hash text not null,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists client_login_tokens (
-  id uuid primary key default gen_random_uuid(),
-  email text not null,
-  token text unique not null,
-  kind text not null default 'session',
-  expires_at timestamptz not null,
-  used_at timestamptz,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists admin_users (
-  id uuid primary key default gen_random_uuid(),
-  email text unique not null,
-  name text,
   password_hash text,
+  role text not null default 'client' check (role in ('client', 'admin')),
+  name text,
   created_at timestamptz not null default now()
 );
 
-create table if not exists admin_login_tokens (
+create table if not exists login_tokens (
   id uuid primary key default gen_random_uuid(),
   email text not null,
   token text unique not null,
@@ -146,18 +138,13 @@ alter table project_updates add column if not exists body text;
 alter table project_updates add column if not exists created_by text not null default 'admin';
 alter table project_updates add column if not exists created_at timestamptz not null default now();
 
-alter table admin_users add column if not exists password_hash text;
-
-create index if not exists client_accounts_email_idx on client_accounts(lower(email));
+create index if not exists users_email_idx on users(lower(email));
 create index if not exists enquiries_email_idx on enquiries(lower(email));
 create index if not exists projects_company_idx on projects(company_id);
 create index if not exists sample_requests_project_idx on sample_requests(project_id);
 create index if not exists project_updates_project_idx on project_updates(project_id);
-create index if not exists client_login_tokens_token_idx on client_login_tokens(token);
-create index if not exists client_login_tokens_expires_idx on client_login_tokens(expires_at);
-create index if not exists admin_users_email_idx on admin_users(lower(email));
-create index if not exists admin_login_tokens_token_idx on admin_login_tokens(token);
-create index if not exists admin_login_tokens_expires_idx on admin_login_tokens(expires_at);
+create index if not exists login_tokens_token_idx on login_tokens(token);
+create index if not exists login_tokens_expires_idx on login_tokens(expires_at);
 
 alter table companies enable row level security;
 alter table enquiries enable row level security;
@@ -165,10 +152,8 @@ alter table projects enable row level security;
 alter table sample_requests enable row level security;
 alter table project_documents enable row level security;
 alter table project_updates enable row level security;
-alter table client_login_tokens enable row level security;
-alter table admin_users enable row level security;
-alter table admin_login_tokens enable row level security;
-alter table client_accounts enable row level security;
+alter table users enable row level security;
+alter table login_tokens enable row level security;
 
 drop policy if exists "service role manages companies" on companies;
 drop policy if exists "service role manages enquiries" on enquiries;
@@ -176,10 +161,8 @@ drop policy if exists "service role manages projects" on projects;
 drop policy if exists "service role manages sample requests" on sample_requests;
 drop policy if exists "service role manages project documents" on project_documents;
 drop policy if exists "service role manages project updates" on project_updates;
-drop policy if exists "service role manages client login tokens" on client_login_tokens;
-drop policy if exists "service role manages admin users" on admin_users;
-drop policy if exists "service role manages admin login tokens" on admin_login_tokens;
-drop policy if exists "service role manages client accounts" on client_accounts;
+drop policy if exists "service role manages users" on users;
+drop policy if exists "service role manages login tokens" on login_tokens;
 
 create policy "service role manages companies" on companies
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
@@ -199,25 +182,20 @@ create policy "service role manages project documents" on project_documents
 create policy "service role manages project updates" on project_updates
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
-create policy "service role manages client login tokens" on client_login_tokens
+create policy "service role manages users" on users
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
-create policy "service role manages admin users" on admin_users
-  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
-
-create policy "service role manages admin login tokens" on admin_login_tokens
-  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
-
-create policy "service role manages client accounts" on client_accounts
+create policy "service role manages login tokens" on login_tokens
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
 -- Seed admins so you're not locked out. Each password_hash starts null;
--- the first successful /api/admin/login attempt for that email sets it.
--- Add more admins by inserting more rows here.
-insert into admin_users (email, name)
+-- the first successful /api/login attempt for that email sets it and
+-- signs them in with their existing admin role. Add more admins by
+-- inserting more rows here.
+insert into users (email, name, role)
 values
-  ('kyle.a.newell@gmail.com', 'Kyle Newell'),
-  ('kyle@ecoshell.eco', 'Kyle Newell'),
-  ('andrew@ecoshell.eco', 'Andrew'),
-  ('doug@ecoshell.eco', 'Doug')
+  ('kyle.a.newell@gmail.com', 'Kyle Newell', 'admin'),
+  ('kyle@ecoshell.eco', 'Kyle Newell', 'admin'),
+  ('andrew@ecoshell.eco', 'Andrew', 'admin'),
+  ('doug@ecoshell.eco', 'Doug', 'admin')
 on conflict (email) do nothing;

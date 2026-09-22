@@ -1,11 +1,11 @@
 import {json, requireEnv, supabaseFetch} from '../lib/supabase.js';
-import {requireAdminSession} from '../lib/adminAuth.js';
+import {resolveSession} from '../lib/auth.js';
 
 export async function adminOverview({request, env}) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']);
   if (envError) return json({error: envError}, {status: 500});
-  const adminEmail = await requireAdminSession(request, env);
-  if (!adminEmail) return json({error: 'Admin session is invalid or has expired. Please log in again.'}, {status: 401});
+  const user = await resolveSession(request, env);
+  if (!user || user.role !== 'admin') return json({error: 'Admin session is invalid or has expired. Please log in again.'}, {status: 401});
 
   try {
     const [companies, enquiries, projects, samples] = await Promise.all([

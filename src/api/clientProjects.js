@@ -1,23 +1,15 @@
-import {cleanString, json, requireEnv, supabaseFetch} from '../lib/supabase.js';
+import {json, requireEnv, supabaseFetch} from '../lib/supabase.js';
+import {resolveSession} from '../lib/auth.js';
 
 export async function clientProjects({request, env}) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']);
   if (envError) return json({error: envError}, {status: 500});
 
-  const sessionToken = cleanString(request.headers.get('x-client-session'));
-  if (!sessionToken) return json({error: 'Client session is required.'}, {status: 401});
-
   try {
-    const nowIso = new Date().toISOString();
-    const sessions = await supabaseFetch(
-      env,
-      `client_login_tokens?token=eq.${encodeURIComponent(sessionToken)}&kind=eq.session&expires_at=gt.${encodeURIComponent(nowIso)}&select=email`
-    );
+    const user = await resolveSession(request, env);
+    if (!user) return json({error: 'Session is invalid or has expired. Please log in again.'}, {status: 401});
 
-    const session = sessions[0];
-    if (!session) return json({error: 'Session is invalid or has expired. Please log in again.'}, {status: 401});
-
-    const email = session.email;
+    const email = user.email;
 
     const enquiries = await supabaseFetch(
       env,

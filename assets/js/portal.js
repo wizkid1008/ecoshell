@@ -136,7 +136,7 @@
     heading.textContent = 'Track material reviews, sample requests and next steps.';
     list.innerHTML = '<article class="portal-card"><p>Loading projects...</p></article>';
 
-    fetch('/api/client/projects', {headers: {'x-client-session': sessionToken}})
+    fetch('/api/client/projects', {headers: {'x-session': sessionToken}})
       .then(function(res){
         if(res.status === 401){
           clearSession();
@@ -203,7 +203,7 @@
     heading.textContent = 'Manage client inquiries from first contact to sample trial.';
     list.innerHTML = '<article class="portal-card"><p>Loading admin workspace...</p></article>';
 
-    fetch('/api/admin/overview', {headers: {'x-admin-session': sessionToken}})
+    fetch('/api/admin/overview', {headers: {'x-session': sessionToken}})
       .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, status: res.status, body: body}; }); })
       .then(function(result){
         if(!result.ok){
@@ -254,56 +254,27 @@
     if(submitButton) submitButton.disabled = true;
     setStatus('Signing in...', false);
 
-    function fail(message){
-      if(submitButton) submitButton.disabled = false;
-      setStatus(message, true);
-    }
-
-    function jsonResult(res){
-      return res.json().then(function(body){ return {ok: res.ok, body: body}; });
-    }
-
-    fetch('/api/admin/login', {
+    fetch('/api/login', {
       method: 'POST',
       headers: {'content-type': 'application/json'},
       body: JSON.stringify({email: email, password: password})
     })
-      .then(jsonResult)
-      .then(function(adminResult){
-        if(adminResult.ok){
-          if(submitButton) submitButton.disabled = false;
-          persistSession('admin', adminResult.body.session_token, adminResult.body.email);
-          setStatus('', false);
-          enterDashboard('admin', adminResult.body.email);
-          loadAdminDashboard(adminResult.body.session_token);
+      .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
+      .then(function(result){
+        if(submitButton) submitButton.disabled = false;
+        if(!result.ok){
+          setStatus(result.body.error || 'Something went wrong. Please try again.', true);
           return;
         }
-
-        if(!/not an authorized admin/i.test(adminResult.body.error || '')){
-          fail(adminResult.body.error || 'Something went wrong. Please try again.');
-          return;
-        }
-
-        return fetch('/api/client/login', {
-          method: 'POST',
-          headers: {'content-type': 'application/json'},
-          body: JSON.stringify({email: email, password: password})
-        })
-          .then(jsonResult)
-          .then(function(clientResult){
-            if(submitButton) submitButton.disabled = false;
-            if(!clientResult.ok){
-              setStatus(clientResult.body.error || 'Something went wrong. Please try again.', true);
-              return;
-            }
-            persistSession('client', clientResult.body.session_token, clientResult.body.email);
-            setStatus('', false);
-            enterDashboard('client', clientResult.body.email);
-            loadClientDashboard(clientResult.body.session_token);
-          });
+        var role = result.body.role;
+        persistSession(role, result.body.session_token, result.body.email);
+        setStatus('', false);
+        enterDashboard(role, result.body.email);
+        loadDashboard(role, result.body.session_token);
       })
       .catch(function(){
-        fail('Could not reach the login service right now. Please try again shortly.');
+        if(submitButton) submitButton.disabled = false;
+        setStatus('Could not reach the login service right now. Please try again shortly.', true);
       });
   });
 

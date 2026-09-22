@@ -35,17 +35,21 @@ directly. The contact form submits to `/api/enquiries`, which creates or finds
 a company, stores the enquiry, opens a project and adds the first
 client-visible update.
 
-One portal page (`portal.html`), one sign-in form, using plain email +
-password login (no email sending involved — logging in is instant):
+One portal page (`portal.html`), one sign-in form, one `users` table for
+both roles, using plain email + password login (no email sending involved —
+logging in is instant):
 
-- Submitting the form tries `/api/admin/login` first. If the email is listed
-  in `admin_users`, that signs them in as an admin (first sign-in for a
-  listed email sets its password) and shows the admin dashboard sidebar
-  (Enquiries, Projects, Samples, Companies).
-- Otherwise it falls back to `/api/client/login`, which creates an account on
-  first use or verifies the password on repeat visits, and shows that
-  account's projects, sample status and project updates (empty if none exist
-  yet).
+- Submitting the form calls `/api/login`. If the email already exists as a
+  `users` row, it verifies the password (or, if that row was seeded with no
+  password yet, claims it); if the email is new, it creates a `role: client`
+  account on the spot. The response's `role` field tells the frontend which
+  dashboard to render — admin sidebar (Enquiries, Projects, Samples,
+  Companies) or client dashboard (that account's projects, sample status and
+  updates, empty if none exist yet).
+- Admins are provisioned by inserting a row into `users` with `role: admin`
+  and no `password_hash` (see the seed at the bottom of `schema.sql`) — their
+  first sign-in sets the password. Clients self-serve; there's no separate
+  admin signup flow.
 - `admin.html` is kept only as a redirect to `portal.html` for old bookmarks.
 
 Backend files:
@@ -53,18 +57,20 @@ Backend files:
 - `src/index.js` routes incoming requests to the right handler or falls back
   to static asset serving.
 - `src/api/enquiries.js` handles website enquiries.
-- `src/api/clientLogin.js` creates or authenticates a client account and
-  issues a session token.
-- `src/api/clientProjects.js` returns projects for the logged-in client session.
-- `src/api/adminLogin.js` authenticates (or claims, on first sign-in) an
-  allow-listed admin account and issues a session token.
-- `src/api/adminOverview.js` returns the admin dashboard data.
-- `src/api/adminProjects.js` updates project status and client updates.
+- `src/api/login.js` authenticates or creates/claims a `users` row and issues
+  a session token, returning that account's role.
+- `src/api/clientProjects.js` returns projects for the logged-in session's email.
+- `src/api/adminOverview.js` returns the admin dashboard data (requires
+  `role: admin`).
+- `src/api/adminProjects.js` updates project status and client updates
+  (requires `role: admin`).
 - `src/lib/supabase.js` shared Supabase REST helpers.
 - `src/lib/password.js` PBKDF2 password hashing/verification.
-- `src/lib/adminAuth.js` validates an admin session token.
-- `supabase/schema.sql` defines the prototype database tables and RLS policies,
-  and seeds admin users (password unset until each one's first sign-in).
+- `src/lib/auth.js` resolves a session token to its `users` row (email + role).
+- `supabase/schema.sql` defines the prototype database tables and RLS
+  policies (including a one-time `drop table` cleanup of the old split
+  admin/client tables) and seeds admin users (password unset until each
+  one's first sign-in).
 
 Required Cloudflare environment variables:
 

@@ -2,17 +2,15 @@ import {json} from './lib/supabase.js';
 import {enquiriesCreate} from './api/enquiries.js';
 import {adminOverview} from './api/adminOverview.js';
 import {adminProjectsUpdate} from './api/adminProjects.js';
-import {adminLogin} from './api/adminLogin.js';
+import {login} from './api/login.js';
 import {clientProjects} from './api/clientProjects.js';
-import {clientLogin} from './api/clientLogin.js';
 
 const routes = [
   {method: 'POST', path: '/api/enquiries', handler: enquiriesCreate},
   {method: 'GET', path: '/api/admin/overview', handler: adminOverview},
   {method: 'PATCH', path: '/api/admin/projects', handler: adminProjectsUpdate},
-  {method: 'POST', path: '/api/admin/login', handler: adminLogin},
-  {method: 'GET', path: '/api/client/projects', handler: clientProjects},
-  {method: 'POST', path: '/api/client/login', handler: clientLogin}
+  {method: 'POST', path: '/api/login', handler: login},
+  {method: 'GET', path: '/api/client/projects', handler: clientProjects}
 ];
 
 export default {
