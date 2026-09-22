@@ -316,14 +316,17 @@ values
   ('Venezuela'), ('Vietnam'), ('Yemen'), ('Zambia'), ('Zimbabwe')
 on conflict (name) do nothing;
 
+-- Removed as an admin -- delete outright rather than leaving a stray row
+-- (on conflict do nothing below won't remove an existing row on its own).
+delete from users where email = 'kyle.a.newell@gmail.com';
+
 -- Seed admins so you're not locked out. Each password_hash starts null;
 -- the first successful /api/login attempt for that email sets it and
 -- signs them in with their existing admin role. Add more admins by
 -- inserting more rows here.
 insert into users (email, name, role)
 values
-  ('kyle.a.newell@gmail.com', 'Kyle Newell', 'admin'),
   ('kyle@ecoshell.eco', 'Kyle Newell', 'admin'),
-  ('andrew@ecoshell.eco', 'Andrew', 'admin'),
-  ('doug@ecoshell.eco', 'Doug', 'admin')
+  ('andrew@ecoshell.eco', 'Andrew Bill', 'admin'),
+  ('doug@ecoshell.eco', 'Doug Hardesty', 'admin')
 on conflict (email) do nothing;
