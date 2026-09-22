@@ -1,14 +1,15 @@
-import {json, requireEnv, supabaseFetch} from '../lib/supabase.js';
+import {json, requireEnv, resolveSecret, supabaseFetch} from '../lib/supabase.js';
 
-function isAdmin(request, env) {
+async function isAdmin(request, env) {
   const token = request.headers.get('x-admin-token');
-  return env.ADMIN_PORTAL_TOKEN && token === env.ADMIN_PORTAL_TOKEN;
+  const adminToken = await resolveSecret(env.ADMIN_PORTAL_TOKEN);
+  return adminToken && token === adminToken;
 }
 
 export async function adminProjectsUpdate({request, env}) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'ADMIN_PORTAL_TOKEN']);
   if (envError) return json({error: envError}, {status: 500});
-  if (!isAdmin(request, env)) return json({error: 'Admin access required.'}, {status: 401});
+  if (!(await isAdmin(request, env))) return json({error: 'Admin access required.'}, {status: 401});
 
   const payload = await request.json();
   if (!payload.id) return json({error: 'Project id is required.'}, {status: 400});

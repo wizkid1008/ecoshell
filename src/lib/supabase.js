@@ -9,18 +9,27 @@ export function json(data, init = {}) {
 }
 
 export function requireEnv(env, keys) {
-  const missing = keys.filter((key) => !env[key]);
+  const missing = keys.filter((key) => env[key] === undefined || env[key] === null || env[key] === '');
   if (missing.length) {
     return `Missing required environment variables: ${missing.join(', ')}`;
   }
   return null;
 }
 
+// Secrets Store bindings are objects with an async .get(); plain vars are already strings.
+export async function resolveSecret(value) {
+  if (value && typeof value.get === 'function') {
+    return await value.get();
+  }
+  return value;
+}
+
 export async function supabaseFetch(env, path, options = {}) {
+  const serviceRoleKey = await resolveSecret(env.SUPABASE_SERVICE_ROLE_KEY);
   const url = `${env.SUPABASE_URL}/rest/v1/${path}`;
   const headers = {
-    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-    authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    apikey: serviceRoleKey,
+    authorization: `Bearer ${serviceRoleKey}`,
     'content-type': 'application/json',
     ...(options.headers || {})
   };
@@ -47,10 +56,11 @@ export function generateToken() {
 }
 
 export async function sendEmail(env, {to, subject, html}) {
+  const apiKey = await resolveSecret(env.RESEND_API_KEY);
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      authorization: `Bearer ${env.RESEND_API_KEY}`,
+      authorization: `Bearer ${apiKey}`,
       'content-type': 'application/json'
     },
     body: JSON.stringify({from: env.RESEND_FROM_EMAIL, to, subject, html})
