@@ -35,16 +35,18 @@ directly. The contact form submits to `/api/enquiries`, which creates or finds
 a company, stores the enquiry, opens a project and adds the first
 client-visible update.
 
-Prototype portal pages, both using plain email + password login (no email
-sending involved — logging in is instant):
+One portal page (`client.html`), one sign-in form, using plain email +
+password login (no email sending involved — logging in is instant):
 
-- `client.html` — sign in with any email and a password. The first sign-in
-  for a given email creates the account; later sign-ins verify the password.
-  Shows that account's projects, sample status and project updates (empty if
-  none exist yet).
-- `admin.html` — sign in with an email listed in the `admin_users` table. The
-  first sign-in for a listed email sets its password; unlisted emails are
-  rejected. Add or remove admins by editing that table directly.
+- Submitting the form tries `/api/admin/login` first. If the email is listed
+  in `admin_users`, that signs them in as an admin (first sign-in for a
+  listed email sets its password) and shows the admin dashboard sidebar
+  (Enquiries, Projects, Samples, Companies).
+- Otherwise it falls back to `/api/client/login`, which creates an account on
+  first use or verifies the password on repeat visits, and shows that
+  account's projects, sample status and project updates (empty if none exist
+  yet).
+- `admin.html` is kept only as a redirect to `client.html` for old bookmarks.
 
 Backend files:
 
@@ -62,7 +64,7 @@ Backend files:
 - `src/lib/password.js` PBKDF2 password hashing/verification.
 - `src/lib/adminAuth.js` validates an admin session token.
 - `supabase/schema.sql` defines the prototype database tables and RLS policies,
-  and seeds the first admin user (password unset until their first sign-in).
+  and seeds admin users (password unset until each one's first sign-in).
 
 Required Cloudflare environment variables:
 
