@@ -8,6 +8,7 @@ import {profileGet, profileUpdate} from './api/profile.js';
 import {countriesList} from './api/countries.js';
 import {opportunityDetail} from './api/adminOpportunity.js';
 import {
+  opportunityCreate,
   sampleCreate,
   pilotCreate,
   pilotResultCreate,
@@ -21,6 +22,7 @@ const routes = [
   {method: 'GET', path: '/api/admin/overview', handler: adminOverview},
   {method: 'GET', path: '/api/admin/opportunity', handler: opportunityDetail},
   {method: 'PATCH', path: '/api/admin/projects', handler: adminProjectsUpdate},
+  {method: 'POST', path: '/api/admin/opportunities', handler: opportunityCreate},
   {method: 'POST', path: '/api/admin/samples', handler: sampleCreate},
   {method: 'POST', path: '/api/admin/pilots', handler: pilotCreate},
   {method: 'POST', path: '/api/admin/pilot-results', handler: pilotResultCreate},

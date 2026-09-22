@@ -305,6 +305,62 @@
       (cards || '<article class="portal-card"><h2>No client accounts yet</h2><p>Client sign-ups will show up here.</p></article>');
   }
 
+  function newOpportunityFormHtml(){
+    return '<article class="portal-card">' +
+      '<h3>Add a new opportunity</h3>' +
+      '<p class="portal-note">For leads that didn\'t come through the website contact form — a trade show contact, a referral, a cold outreach target.</p>' +
+      '<div class="frow">' +
+        '<div class="field"><label for="newOppCompany">Company name</label><input id="newOppCompany" placeholder="Acme Packaging"></div>' +
+        '<div class="field"><label for="newOppName">Opportunity name</label><input id="newOppName" placeholder="Closure review for Acme Packaging"></div>' +
+      '</div>' +
+      '<div class="frow">' +
+        '<div class="field"><label for="newOppContactName">Contact name</label><input id="newOppContactName" placeholder="Jordan Lee"></div>' +
+        '<div class="field"><label for="newOppContactEmail">Contact email</label><input id="newOppContactEmail" type="email" placeholder="jordan@acme.com"></div>' +
+      '</div>' +
+      '<div class="field"><label for="newOppStage">Starting stage</label><select id="newOppStage">' + stageOptions('new_inquiry') + '</select></div>' +
+      '<button type="button" class="btn btn--solid" id="newOppSaveBtn">Add opportunity</button>' +
+      '<p class="portal-status" id="newOppStatus"></p>' +
+    '</article>';
+  }
+
+  function wireNewOpportunityForm(){
+    var saveBtn = document.getElementById('newOppSaveBtn');
+    if(!saveBtn) return;
+    saveBtn.addEventListener('click', function(){
+      var statusEl2 = document.getElementById('newOppStatus');
+      var companyName = document.getElementById('newOppCompany').value.trim();
+      var oppName = document.getElementById('newOppName').value.trim();
+      var contactEmail = document.getElementById('newOppContactEmail').value.trim();
+
+      if(!companyName || !oppName || !contactEmail){
+        statusEl2.textContent = 'Company name, opportunity name and contact email are required.';
+        statusEl2.classList.add('is-error');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      statusEl2.textContent = 'Adding...';
+      statusEl2.classList.remove('is-error');
+
+      postJSON('/api/admin/opportunities', {
+        company_name: companyName,
+        name: oppName,
+        contact_name: document.getElementById('newOppContactName').value.trim(),
+        contact_email: contactEmail,
+        status: document.getElementById('newOppStage').value
+      }).then(function(result){
+        saveBtn.disabled = false;
+        if(!result.ok){
+          statusEl2.textContent = result.body.error || 'Could not add opportunity.';
+          statusEl2.classList.add('is-error');
+          return;
+        }
+        loadAdminDashboard(state.sessionToken);
+        openOpportunity(result.body.project.id);
+      });
+    });
+  }
+
   function renderAdminList(){
     var data = state.data || adminDemo;
     if(state.view === 'enquiries'){
@@ -313,15 +369,17 @@
       }).join('');
     }
     if(state.view === 'projects'){
-      list.innerHTML = data.projects.map(function(item){
+      var cardsHtml = data.projects.map(function(item){
         var meta = item.reference_code + ' · ' + (item.companies?.name || 'Company');
         var body = 'Owner: ' + (item.owner ? (item.owner.name || item.owner.email) : 'Unassigned') +
           ' · Contact: ' + (item.contact ? (item.contact.name || item.contact.email) : 'No contact');
         return '<div class="opportunity-row" data-open-project="' + esc(item.id) + '">' + adminCard(item.name, meta, body, item.status) + '</div>';
       }).join('');
+      list.innerHTML = newOpportunityFormHtml() + (cardsHtml || '<article class="portal-card"><h2>No opportunities yet</h2><p>They show up here from an enquiry, or add one directly above.</p></article>');
       list.querySelectorAll('[data-open-project]').forEach(function(el){
         el.addEventListener('click', function(){ openOpportunity(el.getAttribute('data-open-project')); });
       });
+      wireNewOpportunityForm();
     }
     if(state.view === 'samples'){
       list.innerHTML = data.samples.map(function(item){

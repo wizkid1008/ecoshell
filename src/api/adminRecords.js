@@ -1,5 +1,7 @@
-import {json, requireEnv, supabaseFetch} from '../lib/supabase.js';
+import {cleanString, json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 import {resolveSession} from '../lib/auth.js';
+import {findOrCreateCompany} from '../lib/companies.js';
+import {isValidStage} from '../lib/pipeline.js';
 
 async function requireAdmin(request, env) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']);
@@ -15,6 +17,67 @@ function pick(payload, fields) {
     if (payload[key] !== undefined) out[key] = payload[key];
   });
   return out;
+}
+
+export async function opportunityCreate({request, env}) {
+  const auth = await requireAdmin(request, env);
+  if (auth.error) return auth.error;
+
+  const payload = await request.json();
+  const companyName = cleanString(payload.company_name);
+  const contactEmail = cleanString(payload.contact_email).toLowerCase();
+  const name = cleanString(payload.name);
+
+  if (!companyName || !contactEmail || !name) {
+    return json({error: 'Company name, contact email and opportunity name are required.'}, {status: 400});
+  }
+  if (payload.status !== undefined && !isValidStage(payload.status)) {
+    return json({error: 'Invalid pipeline stage.'}, {status: 400});
+  }
+
+  try {
+    const companyId = await findOrCreateCompany(env, companyName);
+
+    const existing = await supabaseFetch(env, `users?email=eq.${encodeURIComponent(contactEmail)}&select=id,company_id`);
+    let contactId = existing[0]?.id;
+
+    if (!contactId) {
+      const inserted = await supabaseFetch(env, 'users?select=id', {
+        method: 'POST',
+        headers: {prefer: 'return=representation'},
+        body: JSON.stringify({
+          email: contactEmail,
+          role: 'member',
+          status: 'lead',
+          name: cleanString(payload.contact_name) || null,
+          company_id: companyId,
+          company_name: companyName
+        })
+      });
+      contactId = inserted[0].id;
+    } else if (!existing[0].company_id) {
+      await supabaseFetch(env, `users?id=eq.${contactId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({company_id: companyId, company_name: companyName})
+      });
+    }
+
+    const rows = await supabaseFetch(env, 'projects?select=id,reference_code,name,status', {
+      method: 'POST',
+      headers: {prefer: 'return=representation'},
+      body: JSON.stringify({
+        company_id: companyId,
+        contact_id: contactId,
+        name,
+        status: payload.status || 'new_inquiry',
+        ...pick(payload, ['polymer', 'process', 'target'])
+      })
+    });
+
+    return json({project: rows[0]});
+  } catch (error) {
+    return json({error: error.message}, {status: 500});
+  }
 }
 
 export async function sampleCreate({request, env}) {
