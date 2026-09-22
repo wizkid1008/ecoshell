@@ -41,7 +41,11 @@ export default {
     if (url.pathname.startsWith('/api/')) {
       const route = routes.find((r) => r.method === request.method && r.path === url.pathname);
       if (!route) return json({error: 'Not found.'}, {status: 404});
-      return route.handler({request, env, ctx});
+      try {
+        return await route.handler({request, env, ctx});
+      } catch (error) {
+        return json({error: error.message}, {status: 500});
+      }
     }
 
     return env.ASSETS.fetch(request);
