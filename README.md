@@ -35,7 +35,7 @@ directly. The contact form submits to `/api/enquiries`, which creates or finds
 a company, stores the enquiry, opens a project and adds the first
 client-visible update.
 
-One portal page (`client.html`), one sign-in form, using plain email +
+One portal page (`portal.html`), one sign-in form, using plain email +
 password login (no email sending involved — logging in is instant):
 
 - Submitting the form tries `/api/admin/login` first. If the email is listed
@@ -46,7 +46,7 @@ password login (no email sending involved — logging in is instant):
   first use or verifies the password on repeat visits, and shows that
   account's projects, sample status and project updates (empty if none exist
   yet).
-- `admin.html` is kept only as a redirect to `client.html` for old bookmarks.
+- `admin.html` is kept only as a redirect to `portal.html` for old bookmarks.
 
 Backend files:
 
