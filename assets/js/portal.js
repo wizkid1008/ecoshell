@@ -25,6 +25,7 @@
   var ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
   var ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   var ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+  var ICON_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
 
   // ---------- modal ----------
   // openModal renders a popup with a body and Save/Cancel footer. onSave receives
@@ -276,6 +277,38 @@
     setActiveNav(state.view);
   }
 
+  // While viewing one opportunity, the sidebar swaps the global stage list
+  // for that opportunity's own pipeline position, so it's clear where this
+  // particular client sits without scrolling back up to the top of the page.
+  function renderOppNav(project){
+    appNav.innerHTML =
+      '<button type="button" class="app-nav__item" id="oppNavBackBtn">' + ICON_BACK + 'Back to pipeline</button>' +
+      '<p class="app-nav__label">' + esc(project.reference_code) + '</p>' +
+      pipelineHtml(project.status);
+
+    document.getElementById('oppNavBackBtn').addEventListener('click', backToOpportunities);
+
+    appNav.querySelectorAll('.pipeline__step').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var stage = btn.getAttribute('data-stage');
+        if(stage === project.status) return;
+        var label = STAGES.find(function(s){ return s[0] === stage; })[1];
+        openModal({
+          title: 'Move to "' + label + '"?',
+          saveLabel: 'Move stage',
+          bodyHtml: '<p class="portal-note">This updates the opportunity\'s pipeline stage. The client sees the new stage next time they open the portal.</p>',
+          onSave: function(modalEl, done){
+            patchJSON('/api/admin/projects', {id: project.id, status: stage}).then(function(result){
+              if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
+              done(true);
+              openOpportunity(project.id);
+            });
+          }
+        });
+      });
+    });
+  }
+
   function renderClientKpis(data){
     var projects = data.projects || [];
     var active = projects.filter(function(project){ return !/closed|complete|not_fit/.test(project.status || ''); }).length;
@@ -403,6 +436,7 @@
   }
 
   function renderClientsView(data){
+    heading.textContent = 'Clients';
     var clients = data.clients || [];
     var companies = data.companies || [];
     var archetypeCounts = countBy(clients, 'archetype');
@@ -564,6 +598,7 @@
   function renderStageView(data, stage){
     var stagePair = STAGES.find(function(s){ return s[0] === stage; });
     var stageLabel = stagePair ? stagePair[1] : labelStatus(stage);
+    heading.textContent = stageLabel;
     var projectRows = data.projects.filter(function(item){ return item.status === stage; }).map(function(item){
       var sub = (item.companies?.name || 'Company') + ' · Owner: ' + (item.owner ? (item.owner.name || item.owner.email) : 'Unassigned') +
         ' · Contact: ' + (item.contact ? (item.contact.name || item.contact.email) : 'No contact');
@@ -603,7 +638,7 @@
     kpis.hidden = false;
     state.opportunity = null;
     state.view = state.returnView || 'stage:new_inquiry';
-    setActiveNav(state.view);
+    renderAdminNav(state.data || adminDemo);
     renderAdminList();
   }
 
@@ -833,12 +868,13 @@
       });
     }
 
+    heading.textContent = project.companies?.name || project.name;
+    renderOppNav(project);
+
     list.innerHTML =
-      '<button type="button" class="btn" id="oppBackBtn">Back to opportunities</button>' +
       '<article class="portal-card">' +
         '<div class="portal-card__top"><div><p class="portal-ref">' + esc(project.reference_code) + '</p><h2>' + esc(project.name) + '</h2></div><span class="pill">' + esc(labelStatus(project.status)) + '</span></div>' +
         '<dl class="portal-meta"><div><dt>Company</dt><dd>' + esc(project.companies?.name || 'Company') + '</dd></div><div><dt>Contact</dt><dd>' + esc(project.contact?.name || project.contact?.email || 'No contact') + '</dd></div><div><dt>Owner</dt><dd>' + esc(project.owner?.name || project.owner?.email || 'Unassigned') + '</dd></div></dl>' +
-        pipelineHtml(project.status) +
         '<div class="card-head">' +
           '<p class="portal-note" style="flex:1">' +
             (project.polymer ? '<b>Polymer:</b> ' + esc(project.polymer) + ' &nbsp; ' : '') +
@@ -856,8 +892,6 @@
       sectionHtml('document', 'Documents') +
       sectionHtml('clientUpdate', 'Client-visible updates') +
       sectionHtml('note', 'Internal notes');
-
-    document.getElementById('oppBackBtn').addEventListener('click', backToOpportunities);
 
     document.getElementById('oppDetailsEditBtn').addEventListener('click', function(){
       var ownerOptions = '<option value="">Unassigned</option>' + admins.map(function(a){
@@ -886,26 +920,6 @@
             reload();
           });
         }
-      });
-    });
-
-    list.querySelectorAll('.pipeline__step').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var stage = btn.getAttribute('data-stage');
-        if(stage === project.status) return;
-        var label = STAGES.find(function(s){ return s[0] === stage; })[1];
-        openModal({
-          title: 'Move to "' + label + '"?',
-          saveLabel: 'Move stage',
-          bodyHtml: '<p class="portal-note">This updates the opportunity\'s pipeline stage. The client sees the new stage next time they open the portal.</p>',
-          onSave: function(modalEl, done){
-            patchJSON('/api/admin/projects', {id: project.id, status: stage}).then(function(result){
-              if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
-              done(true);
-              reload();
-            });
-          }
-        });
       });
     });
 
