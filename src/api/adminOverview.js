@@ -1,15 +1,11 @@
-import {json, requireEnv, resolveSecret, supabaseFetch} from '../lib/supabase.js';
-
-async function isAdmin(request, env) {
-  const token = request.headers.get('x-admin-token');
-  const adminToken = await resolveSecret(env.ADMIN_PORTAL_TOKEN);
-  return adminToken && token === adminToken;
-}
+import {json, requireEnv, supabaseFetch} from '../lib/supabase.js';
+import {requireAdminSession} from '../lib/adminAuth.js';
 
 export async function adminOverview({request, env}) {
-  const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'ADMIN_PORTAL_TOKEN']);
+  const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']);
   if (envError) return json({error: envError}, {status: 500});
-  if (!(await isAdmin(request, env))) return json({error: 'Admin access required.'}, {status: 401});
+  const adminEmail = await requireAdminSession(request, env);
+  if (!adminEmail) return json({error: 'Admin session is invalid or has expired. Please log in again.'}, {status: 401});
 
   try {
     const [companies, enquiries, projects, samples] = await Promise.all([

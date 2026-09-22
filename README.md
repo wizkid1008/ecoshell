@@ -37,29 +37,35 @@ client-visible update.
 
 Prototype portal pages:
 
-- `client.html` — a client requests a one-time login link by email (sent via
-  Resend), then views their projects, sample status and project updates.
-- `admin.html` — an admin token gates a dashboard of companies, enquiries,
-  projects and sample requests.
+- `client.html` — anyone requests a one-time login link by email (sent via
+  Resend), then views their projects, sample status and project updates (empty
+  if that email has no projects yet).
+- `admin.html` — a one-time login link, restricted to emails listed in the
+  `admin_users` table, gates a dashboard of companies, enquiries, projects and
+  sample requests. Add or remove admins by editing that table directly.
 
 Backend files:
 
 - `src/index.js` routes incoming requests to the right handler or falls back
   to static asset serving.
 - `src/api/enquiries.js` handles website enquiries.
-- `src/api/clientRequestLink.js` emails a one-time magic login link.
-- `src/api/clientSession.js` exchanges a magic link token for a session token.
+- `src/api/clientRequestLink.js` emails a one-time client magic login link.
+- `src/api/clientSession.js` exchanges a client magic link token for a session token.
 - `src/api/clientProjects.js` returns projects for the logged-in client session.
+- `src/api/adminRequestLink.js` emails a one-time admin magic login link, only
+  if the email is in `admin_users`.
+- `src/api/adminSession.js` exchanges an admin magic link token for a session token.
 - `src/api/adminOverview.js` returns the admin dashboard data.
 - `src/api/adminProjects.js` updates project status and client updates.
 - `src/lib/supabase.js` shared Supabase REST + email helpers.
-- `supabase/schema.sql` defines the prototype database tables and RLS policies.
+- `src/lib/adminAuth.js` validates an admin session token.
+- `supabase/schema.sql` defines the prototype database tables and RLS policies,
+  and seeds the first admin user.
 
 Required Cloudflare environment variables:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `ADMIN_PORTAL_TOKEN`
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
 - `PUBLIC_SITE_URL`

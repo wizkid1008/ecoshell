@@ -6,6 +6,7 @@
   var list = document.getElementById('adminList');
   var tabs = Array.prototype.slice.call(document.querySelectorAll('.portal-tabs button'));
   var state = {view: 'enquiries', data: null};
+  var SESSION_KEY = 'ecoshell_admin_session';
 
   var demo = {
     companies: [
@@ -93,22 +94,16 @@
     statusEl.classList.toggle('is-error', !!isError);
   }
 
-  form.addEventListener('submit', function(event){
-    event.preventDefault();
-    var token = form.adminToken.value.trim();
-    setStatus('Loading admin workspace...', false);
+  function loadOverview(sessionToken){
     list.innerHTML = '<article class="portal-card"><p>Loading admin workspace...</p></article>';
 
-    fetch('/api/admin/overview', {headers: {'x-admin-token': token}})
+    fetch('/api/admin/overview', {headers: {'x-admin-session': sessionToken}})
       .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, status: res.status, body: body}; }); })
       .then(function(result){
         if(!result.ok){
-          if(result.status === 401){
-            setStatus('Invalid admin token.', true);
-          } else {
-            setStatus(result.body.error || 'Could not reach the admin service right now.', true);
-          }
-          list.innerHTML = '<article class="portal-card"><h2>Unable to load admin data</h2><p>' + esc(result.body.error || 'Check the token and try again.') + '</p></article>';
+          if(result.status === 401) sessionStorage.removeItem(SESSION_KEY);
+          setStatus(result.body.error || 'Could not reach the admin service right now.', true);
+          list.innerHTML = '<article class="portal-card"><h2>Unable to load admin data</h2><p>' + esc(result.body.error || 'Please log in again.') + '</p></article>';
           return;
         }
         setStatus('', false);
@@ -120,9 +115,70 @@
         setStatus('Could not reach the admin service right now.', true);
         list.innerHTML = '<article class="portal-card"><h2>Unable to load admin data</h2><p>Check your connection and try again.</p></article>';
       });
+  }
+
+  function exchangeMagicToken(token){
+    setStatus('Verifying your login link...', false);
+    list.innerHTML = '<article class="portal-card"><p>Verifying login link...</p></article>';
+
+    fetch('/api/admin/session?token=' + encodeURIComponent(token))
+      .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
+      .then(function(result){
+        var url = new URL(window.location.href);
+        url.searchParams.delete('token');
+        window.history.replaceState({}, document.title, url.pathname + url.search);
+
+        if(!result.ok){
+          setStatus(result.body.error || 'This login link is invalid or has expired.', true);
+          return;
+        }
+
+        sessionStorage.setItem(SESSION_KEY, result.body.session_token);
+        setStatus('', false);
+        loadOverview(result.body.session_token);
+      })
+      .catch(function(){
+        setStatus('Could not verify the login link. Please request a new one.', true);
+      });
+  }
+
+  form.addEventListener('submit', function(event){
+    event.preventDefault();
+    var email = form.adminEmail.value.trim();
+    var submitButton = form.querySelector('button[type="submit"]');
+    if(submitButton) submitButton.disabled = true;
+    setStatus('Sending login link...', false);
+
+    fetch('/api/admin/request-link', {
+      method: 'POST',
+      headers: {'content-type': 'application/json'},
+      body: JSON.stringify({email: email})
+    })
+      .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
+      .then(function(result){
+        if(submitButton) submitButton.disabled = false;
+        if(!result.ok){
+          setStatus(result.body.error || 'Something went wrong. Please try again.', true);
+          return;
+        }
+        setStatus('Check your email for a login link. It expires in 15 minutes.', false);
+        form.reset();
+      })
+      .catch(function(){
+        if(submitButton) submitButton.disabled = false;
+        setStatus('Could not reach the login service right now. Please try again shortly.', true);
+      });
   });
 
   state.data = demo;
   renderKpis(demo);
   renderList();
+
+  var urlToken = new URL(window.location.href).searchParams.get('token');
+  if(urlToken){
+    exchangeMagicToken(urlToken);
+  } else {
+    var storedSession = sessionStorage.getItem(SESSION_KEY);
+    if(storedSession) loadOverview(storedSession);
+  }
 })();

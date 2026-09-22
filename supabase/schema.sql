@@ -78,12 +78,75 @@ create table if not exists client_login_tokens (
   created_at timestamptz not null default now()
 );
 
+create table if not exists admin_users (
+  id uuid primary key default gen_random_uuid(),
+  email text unique not null,
+  name text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists admin_login_tokens (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  token text unique not null,
+  kind text not null default 'magic',
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+-- Heals schema drift: adds any columns older deployments of this file were missing.
+alter table companies add column if not exists name text;
+alter table companies add column if not exists slug text;
+alter table companies add column if not exists region text;
+alter table companies add column if not exists industry text;
+alter table companies add column if not exists access_status text not null default 'lead';
+alter table companies add column if not exists created_at timestamptz not null default now();
+
+alter table enquiries add column if not exists company_id uuid references companies(id) on delete set null;
+alter table enquiries add column if not exists first_name text;
+alter table enquiries add column if not exists last_name text;
+alter table enquiries add column if not exists company text;
+alter table enquiries add column if not exists email text;
+alter table enquiries add column if not exists country text;
+alter table enquiries add column if not exists application text;
+alter table enquiries add column if not exists message text;
+alter table enquiries add column if not exists status text not null default 'new';
+alter table enquiries add column if not exists created_at timestamptz not null default now();
+
+alter table projects add column if not exists company_id uuid references companies(id) on delete cascade;
+alter table projects add column if not exists enquiry_id uuid references enquiries(id) on delete set null;
+alter table projects add column if not exists name text;
+alter table projects add column if not exists polymer text;
+alter table projects add column if not exists process text;
+alter table projects add column if not exists target text;
+alter table projects add column if not exists status text not null default 'new_inquiry';
+alter table projects add column if not exists created_at timestamptz not null default now();
+alter table projects add column if not exists updated_at timestamptz not null default now();
+
+alter table sample_requests add column if not exists project_id uuid references projects(id) on delete cascade;
+alter table sample_requests add column if not exists status text not null default 'requested';
+alter table sample_requests add column if not exists shipping_name text;
+alter table sample_requests add column if not exists shipping_address text;
+alter table sample_requests add column if not exists tracking_number text;
+alter table sample_requests add column if not exists admin_note text;
+alter table sample_requests add column if not exists created_at timestamptz not null default now();
+
+alter table project_updates add column if not exists project_id uuid references projects(id) on delete cascade;
+alter table project_updates add column if not exists audience text not null default 'client';
+alter table project_updates add column if not exists body text;
+alter table project_updates add column if not exists created_by text not null default 'admin';
+alter table project_updates add column if not exists created_at timestamptz not null default now();
+
 create index if not exists enquiries_email_idx on enquiries(lower(email));
 create index if not exists projects_company_idx on projects(company_id);
 create index if not exists sample_requests_project_idx on sample_requests(project_id);
 create index if not exists project_updates_project_idx on project_updates(project_id);
 create index if not exists client_login_tokens_token_idx on client_login_tokens(token);
 create index if not exists client_login_tokens_expires_idx on client_login_tokens(expires_at);
+create index if not exists admin_users_email_idx on admin_users(lower(email));
+create index if not exists admin_login_tokens_token_idx on admin_login_tokens(token);
+create index if not exists admin_login_tokens_expires_idx on admin_login_tokens(expires_at);
 
 alter table companies enable row level security;
 alter table enquiries enable row level security;
@@ -92,6 +155,8 @@ alter table sample_requests enable row level security;
 alter table project_documents enable row level security;
 alter table project_updates enable row level security;
 alter table client_login_tokens enable row level security;
+alter table admin_users enable row level security;
+alter table admin_login_tokens enable row level security;
 
 drop policy if exists "service role manages companies" on companies;
 drop policy if exists "service role manages enquiries" on enquiries;
@@ -100,6 +165,8 @@ drop policy if exists "service role manages sample requests" on sample_requests;
 drop policy if exists "service role manages project documents" on project_documents;
 drop policy if exists "service role manages project updates" on project_updates;
 drop policy if exists "service role manages client login tokens" on client_login_tokens;
+drop policy if exists "service role manages admin users" on admin_users;
+drop policy if exists "service role manages admin login tokens" on admin_login_tokens;
 
 create policy "service role manages companies" on companies
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
@@ -121,3 +188,14 @@ create policy "service role manages project updates" on project_updates
 
 create policy "service role manages client login tokens" on client_login_tokens
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+create policy "service role manages admin users" on admin_users
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+create policy "service role manages admin login tokens" on admin_login_tokens
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+-- Seed the first admin so you're not locked out. Add more admins by inserting more rows here.
+insert into admin_users (email, name)
+values ('kyle.a.newell@gmail.com', 'Kyle Newell')
+on conflict (email) do nothing;

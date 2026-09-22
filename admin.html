@@ -33,12 +33,13 @@
       <h1>Manage client inquiries from first contact to sample trial.</h1>
       <form class="portal-login" id="adminLogin">
         <div class="field">
-          <label for="adminToken">Admin token</label>
-          <input id="adminToken" name="adminToken" type="password" autocomplete="current-password" placeholder="Prototype access token" required>
+          <label for="adminEmail">Admin email</label>
+          <input id="adminEmail" name="adminEmail" type="email" autocomplete="email" placeholder="name@ecoshell.eco" required>
         </div>
-        <button class="btn btn--solid" type="submit">Open admin</button>
+        <button class="btn btn--solid" type="submit">Send login link</button>
       </form>
       <p class="portal-status" id="adminLoginStatus" role="status" aria-live="polite"></p>
+      <p class="portal__hint">Enter an email with admin access and we'll send a one-time login link, valid for 15 minutes.</p>
     </div>
   </section>
 
