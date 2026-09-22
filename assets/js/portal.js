@@ -442,11 +442,16 @@
     var archetypeCounts = countBy(clients, 'archetype');
     var industryCounts = countBy(clients, 'industry');
 
+    var editIcon = function(attr, id){
+      return '<button type="button" class="icon-btn" data-' + attr + '="' + esc(id) + '" aria-label="Edit profile" title="Edit profile">' + ICON_PENCIL + '</button>';
+    };
+
     var clientRows = clients.map(function(item){
       var details = [item.company_name, item.job_title, item.industry].filter(Boolean).join(' · ') || 'No profile details yet';
       return rowItem({
         title: item.name || item.email, sub: details, status: item.status || 'lead',
-        clickable: true, dataAttrs: ' data-open-client="' + esc(item.id) + '"'
+        clickable: true, extraHtml: editIcon('edit-client', item.id),
+        dataAttrs: ' data-go-client="' + esc(item.id) + '"'
       });
     });
 
@@ -454,7 +459,8 @@
       var details = [item.industry, item.archetype, item.country].filter(Boolean).join(' · ') || 'No company details yet';
       return rowItem({
         title: item.name, sub: details, clickable: true,
-        dataAttrs: ' data-open-company="' + esc(item.id) + '"'
+        extraHtml: editIcon('edit-company', item.id),
+        dataAttrs: ' data-go-company="' + esc(item.id) + '"'
       });
     });
 
@@ -466,11 +472,60 @@
       '<article class="portal-card"><h3>Clients</h3>' + rowlistHtml(clientRows, 'No client accounts yet.', true) + '</article>' +
       '<article class="portal-card"><h3>Companies</h3>' + rowlistHtml(companyRows, 'No companies yet.', true) + '</article>';
 
-    list.querySelectorAll('[data-open-client]').forEach(function(el){
-      el.addEventListener('click', function(){ openClientModal(el.getAttribute('data-open-client')); });
+    list.querySelectorAll('[data-edit-client]').forEach(function(el){
+      el.addEventListener('click', function(event){ event.stopPropagation(); openClientModal(el.getAttribute('data-edit-client')); });
     });
-    list.querySelectorAll('[data-open-company]').forEach(function(el){
-      el.addEventListener('click', function(){ openCompanyModal(el.getAttribute('data-open-company')); });
+    list.querySelectorAll('[data-edit-company]').forEach(function(el){
+      el.addEventListener('click', function(event){ event.stopPropagation(); openCompanyModal(el.getAttribute('data-edit-company')); });
+    });
+
+    list.querySelectorAll('[data-go-client]').forEach(function(el){
+      el.addEventListener('click', function(event){
+        if(event.target.closest('[data-edit-client]')) return;
+        var client = clients.find(function(c){ return String(c.id) === el.getAttribute('data-go-client'); });
+        if(!client) return;
+        var matches = (data.projects || []).filter(function(p){ return p.contact && p.contact.email === client.email; });
+        goToClientOpportunity(matches, function(){ openClientModal(client.id); });
+      });
+    });
+    list.querySelectorAll('[data-go-company]').forEach(function(el){
+      el.addEventListener('click', function(event){
+        if(event.target.closest('[data-edit-company]')) return;
+        var company = companies.find(function(c){ return String(c.id) === el.getAttribute('data-go-company'); });
+        if(!company) return;
+        var matches = (data.projects || []).filter(function(p){ return p.companies && p.companies.name === company.name; });
+        goToClientOpportunity(matches, function(){ openCompanyModal(company.id); });
+      });
+    });
+  }
+
+  // A client/company row leads straight into their opportunity's workflow
+  // view (the same one opened from the pipeline stage list) rather than a
+  // profile popup — the popup is now the pencil icon instead of the default
+  // click. With no opportunity yet, falls back to the profile edit.
+  function goToClientOpportunity(matches, fallback){
+    if(!matches.length){ fallback(); return; }
+    if(matches.length === 1){ openOpportunity(matches[0].id); return; }
+    var rows = matches.map(function(p){
+      return rowItem({
+        title: p.reference_code + ' — ' + p.name, sub: labelStatus(p.status),
+        clickable: true, dataAttrs: ' data-pick-opp="' + esc(p.id) + '"'
+      });
+    });
+    openModal({
+      title: 'Choose an opportunity',
+      saveLabel: 'Close',
+      bodyHtml: rowlistHtml(rows, 'No opportunities.', true),
+      onMount: function(modalEl){
+        modalEl.querySelectorAll('[data-pick-opp]').forEach(function(el){
+          el.addEventListener('click', function(){
+            var id = el.getAttribute('data-pick-opp');
+            closeModal();
+            openOpportunity(id);
+          });
+        });
+      },
+      onSave: function(modalEl, done){ done(true); }
     });
   }
 
