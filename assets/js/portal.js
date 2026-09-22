@@ -19,6 +19,78 @@
   var accountStatusEl = document.getElementById('accountStatus');
   var acctClientRow1 = document.getElementById('acctClientRow1');
   var acctClientRow2 = document.getElementById('acctClientRow2');
+  var modalRoot = document.getElementById('modalRoot');
+
+  var ICON_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+  var ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  var ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  var ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+
+  // ---------- modal ----------
+  // openModal renders a popup with a body and Save/Cancel footer. onSave receives
+  // the modal element (so it can read its own inputs) and a done(ok) callback:
+  // call done(true) to close on success, done(false) or nothing to keep it open
+  // (e.g. after showing a validation/API error inside the modal).
+  var activeModal = null;
+
+  function closeModal(){
+    if(!activeModal) return;
+    activeModal.overlay.classList.remove('is-open');
+    setTimeout(function(){ modalRoot.innerHTML = ''; }, 160);
+    activeModal = null;
+    document.removeEventListener('keydown', onModalKeydown);
+  }
+
+  function onModalKeydown(event){
+    if(event.key === 'Escape') closeModal();
+  }
+
+  function openModal(options){
+    modalRoot.innerHTML =
+      '<div class="modal-overlay" id="modalOverlay">' +
+        '<div class="modal" role="dialog" aria-modal="true">' +
+          '<div class="modal__head"><h3>' + esc(options.title) + '</h3><button type="button" class="modal__close" id="modalCloseBtn" aria-label="Close">' + ICON_CLOSE + '</button></div>' +
+          '<div class="modal__body" id="modalBody">' + options.bodyHtml + '</div>' +
+          '<div class="modal__foot">' +
+            '<p class="modal__foot-status" id="modalFootStatus"></p>' +
+            '<div class="modal__foot-actions">' +
+              '<button type="button" class="btn" id="modalCancelBtn">Cancel</button>' +
+              '<button type="button" class="btn btn--solid" id="modalSaveBtn">' + esc(options.saveLabel || 'Save') + '</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    var overlay = document.getElementById('modalOverlay');
+    var modalEl = modalRoot.querySelector('.modal');
+    var footStatus = document.getElementById('modalFootStatus');
+    var saveBtn = document.getElementById('modalSaveBtn');
+
+    activeModal = {overlay: overlay, el: modalEl};
+    requestAnimationFrame(function(){ overlay.classList.add('is-open'); });
+    document.addEventListener('keydown', onModalKeydown);
+
+    document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+    document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+    overlay.addEventListener('click', function(event){ if(event.target === overlay) closeModal(); });
+
+    if(options.onMount) options.onMount(modalEl);
+
+    saveBtn.addEventListener('click', function(){
+      footStatus.textContent = '';
+      footStatus.classList.remove('is-error');
+      saveBtn.disabled = true;
+      var done = function(ok, message){
+        saveBtn.disabled = false;
+        if(ok){ closeModal(); return; }
+        if(message){
+          footStatus.textContent = message;
+          footStatus.classList.add('is-error');
+        }
+      };
+      options.onSave(modalEl, done);
+    });
+  }
 
   var SESSION_KEY = 'ecoshell_session';
   var EMAIL_KEY = 'ecoshell_email';
@@ -268,6 +340,24 @@
     '</article>';
   }
 
+  // Compact single-line rows for admin lists, replacing full-width cards.
+  // dataAttrs is a raw HTML attribute string (e.g. 'data-open-project="123"').
+  function rowItem(opts){
+    return '<div class="rowlist__item"' + (opts.dataAttrs || '') + '>' +
+      '<div class="rowlist__main"><p class="rowlist__title">' + esc(opts.title) + '</p>' +
+      (opts.sub ? '<p class="rowlist__sub">' + esc(opts.sub) + '</p>' : '') + '</div>' +
+      (opts.status ? '<span class="pill">' + esc(labelStatus(opts.status)) + '</span>' : '') +
+      (opts.extraHtml || '') +
+      (opts.clickable ? '<span class="icon-btn" aria-hidden="true">' + ICON_CHEVRON + '</span>' : '') +
+    '</div>';
+  }
+
+  function rowlistHtml(rows, emptyText, clickable){
+    return '<div class="rowlist' + (clickable ? ' rowlist--clickable' : '') + '">' +
+      (rows.length ? rows.join('') : '<div class="rowlist__empty">' + esc(emptyText) + '</div>') +
+    '</div>';
+  }
+
   function renderAdminKpis(data){
     kpis.innerHTML = [
       '<article><b>' + data.enquiries.length + '</b><span>Enquiries</span></article>',
@@ -302,60 +392,48 @@
     var archetypeCounts = countBy(clients, 'archetype');
     var industryCounts = countBy(clients, 'industry');
 
-    var cards = clients.map(function(item){
-      var details = [item.job_title, item.industry, item.archetype].filter(Boolean).join(' · ') || 'No profile details yet';
-      return '<div class="client-row" data-open-client="' + esc(item.id) + '">' + adminCard(
-        item.name || item.email,
-        item.company_name || 'Company not set',
-        details,
-        item.status || 'lead'
-      ) + '</div>';
-    }).join('');
+    var clientRows = clients.map(function(item){
+      var details = [item.company_name, item.job_title, item.industry].filter(Boolean).join(' · ') || 'No profile details yet';
+      return rowItem({
+        title: item.name || item.email, sub: details, status: item.status || 'lead',
+        clickable: true, dataAttrs: ' data-open-client="' + esc(item.id) + '"'
+      });
+    });
 
-    var companyCards = companies.map(function(item){
+    var companyRows = companies.map(function(item){
       var details = [item.industry, item.archetype, item.country].filter(Boolean).join(' · ') || 'No company details yet';
-      return '<div class="client-row" data-open-company="' + esc(item.id) + '">' + adminCard(item.name, details, '', '') + '</div>';
-    }).join('');
+      return rowItem({
+        title: item.name, sub: details, clickable: true,
+        dataAttrs: ' data-open-company="' + esc(item.id) + '"'
+      });
+    });
 
     list.innerHTML =
       '<div class="breakdown-grid">' +
         breakdownTable('By archetype', archetypeCounts) +
         breakdownTable('By industry', industryCounts) +
       '</div>' +
-      (cards || '<article class="portal-card"><h2>No client accounts yet</h2><p>Client sign-ups will show up here.</p></article>') +
-      '<h3 style="margin-top:22px">Companies</h3>' +
-      (companyCards || '<article class="portal-card"><p class="portal-note">No companies yet.</p></article>');
+      '<article class="portal-card"><h3>Clients</h3>' + rowlistHtml(clientRows, 'No client accounts yet.', true) + '</article>' +
+      '<article class="portal-card"><h3>Companies</h3>' + rowlistHtml(companyRows, 'No companies yet.', true) + '</article>';
 
     list.querySelectorAll('[data-open-client]').forEach(function(el){
-      el.addEventListener('click', function(){ openClientEdit(el.getAttribute('data-open-client')); });
+      el.addEventListener('click', function(){ openClientModal(el.getAttribute('data-open-client')); });
     });
     list.querySelectorAll('[data-open-company]').forEach(function(el){
-      el.addEventListener('click', function(){ openCompanyEdit(el.getAttribute('data-open-company')); });
+      el.addEventListener('click', function(){ openCompanyModal(el.getAttribute('data-open-company')); });
     });
   }
 
-  function backToClients(){
-    kpis.hidden = false;
-    state.view = 'clients';
-    setActiveNav('clients');
-    renderAdminList();
-  }
-
-  function openClientEdit(id){
+  function openClientModal(id){
     var data = state.data || adminDemo;
     var client = (data.clients || []).find(function(c){ return String(c.id) === id; });
-    if(!client){
-      list.innerHTML = '<article class="portal-card"><h2>Client not found</h2><button type="button" class="btn" id="clientBackBtnErr">Back to clients</button></article>';
-      document.getElementById('clientBackBtnErr').addEventListener('click', backToClients);
-      return;
-    }
+    if(!client) return;
 
-    kpis.hidden = true;
     ensureCountries().then(function(){
-      list.innerHTML =
-        '<button type="button" class="btn" id="clientBackBtn">Back to clients</button>' +
-        '<article class="portal-card">' +
-          '<div class="portal-card__top"><div><p class="portal-ref">' + esc(client.email) + '</p><h2>' + esc(client.name || client.email) + '</h2></div><span class="pill">' + esc(labelStatus(client.status || 'lead')) + '</span></div>' +
+      openModal({
+        title: client.name || client.email,
+        saveLabel: 'Save client',
+        bodyHtml:
           '<div class="frow">' +
             '<div class="field"><label for="clientEditName">Name</label><input id="clientEditName" value="' + esc(client.name || '') + '"></div>' +
             '<div class="field"><label for="clientEditStatus">Status</label><select id="clientEditStatus">' + CLIENT_STATUSES.map(function(v){ return '<option value="' + v + '"' + (v === (client.status || 'lead') ? ' selected' : '') + '>' + esc(labelStatus(v)) + '</option>'; }).join('') + '</select></div>' +
@@ -371,167 +449,143 @@
           '<div class="frow">' +
             '<div class="field"><label for="clientEditIndustry">Industry</label><select id="clientEditIndustry">' + optionsHtml(INDUSTRIES, client.industry || '', 'Select an industry') + '</select></div>' +
             '<div class="field"><label for="clientEditArchetype">Archetype</label><select id="clientEditArchetype">' + optionsHtml(ARCHETYPES, client.archetype || '', 'Select an archetype') + '</select></div>' +
-          '</div>' +
-          '<button type="button" class="btn btn--solid" id="clientEditSaveBtn">Save client</button>' +
-          '<p class="portal-status" id="clientEditStatusMsg"></p>' +
-        '</article>';
-
-      document.getElementById('clientBackBtn').addEventListener('click', backToClients);
-      document.getElementById('clientEditSaveBtn').addEventListener('click', function(){
-        var statusMsg = document.getElementById('clientEditStatusMsg');
-        statusMsg.textContent = 'Saving...';
-        statusMsg.classList.remove('is-error');
-        patchJSON('/api/admin/clients', {
-          id: client.id,
-          name: document.getElementById('clientEditName').value,
-          status: document.getElementById('clientEditStatus').value,
-          company_name: document.getElementById('clientEditCompanyName').value,
-          job_title: document.getElementById('clientEditJobTitle').value,
-          phone: document.getElementById('clientEditPhone').value,
-          country: document.getElementById('clientEditCountry').value,
-          industry: document.getElementById('clientEditIndustry').value,
-          archetype: document.getElementById('clientEditArchetype').value
-        }).then(function(result){
-          if(!result.ok){
-            statusMsg.textContent = result.body.error || 'Could not save.';
-            statusMsg.classList.add('is-error');
-            return;
-          }
-          loadAdminDashboard(state.sessionToken);
-        });
+          '</div>',
+        onSave: function(modalEl, done){
+          patchJSON('/api/admin/clients', {
+            id: client.id,
+            name: document.getElementById('clientEditName').value,
+            status: document.getElementById('clientEditStatus').value,
+            company_name: document.getElementById('clientEditCompanyName').value,
+            job_title: document.getElementById('clientEditJobTitle').value,
+            phone: document.getElementById('clientEditPhone').value,
+            country: document.getElementById('clientEditCountry').value,
+            industry: document.getElementById('clientEditIndustry').value,
+            archetype: document.getElementById('clientEditArchetype').value
+          }).then(function(result){
+            if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
+            done(true);
+            loadAdminDashboard(state.sessionToken);
+          });
+        }
       });
     });
   }
 
-  function openCompanyEdit(id){
+  function openCompanyModal(id){
     var data = state.data || adminDemo;
     var company = (data.companies || []).find(function(c){ return String(c.id) === id; });
-    if(!company){
-      list.innerHTML = '<article class="portal-card"><h2>Company not found</h2><button type="button" class="btn" id="companyBackBtnErr">Back to clients</button></article>';
-      document.getElementById('companyBackBtnErr').addEventListener('click', backToClients);
-      return;
-    }
+    if(!company) return;
 
-    kpis.hidden = true;
     ensureCountries().then(function(){
-      list.innerHTML =
-        '<button type="button" class="btn" id="companyBackBtn">Back to clients</button>' +
-        '<article class="portal-card">' +
-          '<h2>' + esc(company.name) + '</h2>' +
+      openModal({
+        title: company.name,
+        saveLabel: 'Save company',
+        bodyHtml:
           '<div class="field"><label for="companyEditName">Company name</label><input id="companyEditName" value="' + esc(company.name || '') + '"></div>' +
           '<div class="frow">' +
             '<div class="field"><label for="companyEditIndustry">Industry</label><select id="companyEditIndustry">' + optionsHtml(INDUSTRIES, company.industry || '', 'Select an industry') + '</select></div>' +
             '<div class="field"><label for="companyEditArchetype">Archetype</label><select id="companyEditArchetype">' + optionsHtml(ARCHETYPES, company.archetype || '', 'Select an archetype') + '</select></div>' +
           '</div>' +
-          '<div class="field"><label for="companyEditCountry">Country</label><select id="companyEditCountry">' + optionsHtml(countriesCache || [], company.country || '', 'Select a country') + '</select></div>' +
-          '<button type="button" class="btn btn--solid" id="companyEditSaveBtn">Save company</button>' +
-          '<p class="portal-status" id="companyEditStatusMsg"></p>' +
-        '</article>';
-
-      document.getElementById('companyBackBtn').addEventListener('click', backToClients);
-      document.getElementById('companyEditSaveBtn').addEventListener('click', function(){
-        var statusMsg = document.getElementById('companyEditStatusMsg');
-        statusMsg.textContent = 'Saving...';
-        statusMsg.classList.remove('is-error');
-        patchJSON('/api/admin/companies', {
-          id: company.id,
-          name: document.getElementById('companyEditName').value,
-          industry: document.getElementById('companyEditIndustry').value,
-          archetype: document.getElementById('companyEditArchetype').value,
-          country: document.getElementById('companyEditCountry').value
-        }).then(function(result){
-          if(!result.ok){
-            statusMsg.textContent = result.body.error || 'Could not save.';
-            statusMsg.classList.add('is-error');
-            return;
-          }
-          loadAdminDashboard(state.sessionToken);
-        });
+          '<div class="field"><label for="companyEditCountry">Country</label><select id="companyEditCountry">' + optionsHtml(countriesCache || [], company.country || '', 'Select a country') + '</select></div>',
+        onSave: function(modalEl, done){
+          patchJSON('/api/admin/companies', {
+            id: company.id,
+            name: document.getElementById('companyEditName').value,
+            industry: document.getElementById('companyEditIndustry').value,
+            archetype: document.getElementById('companyEditArchetype').value,
+            country: document.getElementById('companyEditCountry').value
+          }).then(function(result){
+            if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
+            done(true);
+            loadAdminDashboard(state.sessionToken);
+          });
+        }
       });
     });
   }
 
-  function newOpportunityFormHtml(){
-    return '<article class="portal-card">' +
-      '<h3>Add a new opportunity</h3>' +
-      '<p class="portal-note">For leads that didn\'t come through the website contact form — a trade show contact, a referral, a cold outreach target.</p>' +
-      '<div class="frow">' +
-        '<div class="field"><label for="newOppCompany">Company name</label><input id="newOppCompany" placeholder="Acme Packaging"></div>' +
-        '<div class="field"><label for="newOppName">Opportunity name</label><input id="newOppName" placeholder="Closure review for Acme Packaging"></div>' +
-      '</div>' +
-      '<div class="frow">' +
-        '<div class="field"><label for="newOppContactName">Contact name</label><input id="newOppContactName" placeholder="Jordan Lee"></div>' +
-        '<div class="field"><label for="newOppContactEmail">Contact email</label><input id="newOppContactEmail" type="email" placeholder="jordan@acme.com"></div>' +
-      '</div>' +
-      '<div class="field"><label for="newOppStage">Starting stage</label><select id="newOppStage">' + stageOptions('new_inquiry') + '</select></div>' +
-      '<button type="button" class="btn btn--solid" id="newOppSaveBtn">Add opportunity</button>' +
-      '<p class="portal-status" id="newOppStatus"></p>' +
-    '</article>';
-  }
+  function openNewOpportunityModal(){
+    openModal({
+      title: 'New opportunity',
+      saveLabel: 'Add opportunity',
+      bodyHtml:
+        '<p class="portal-note">For leads that didn\'t come through the website contact form — a trade show contact, a referral, a cold outreach target.</p>' +
+        '<div class="frow">' +
+          '<div class="field"><label for="newOppCompany">Company name</label><input id="newOppCompany" placeholder="Acme Packaging"></div>' +
+          '<div class="field"><label for="newOppName">Opportunity name</label><input id="newOppName" placeholder="Closure review for Acme Packaging"></div>' +
+        '</div>' +
+        '<div class="frow">' +
+          '<div class="field"><label for="newOppContactName">Contact name</label><input id="newOppContactName" placeholder="Jordan Lee"></div>' +
+          '<div class="field"><label for="newOppContactEmail">Contact email</label><input id="newOppContactEmail" type="email" placeholder="jordan@acme.com"></div>' +
+        '</div>' +
+        '<div class="field"><label for="newOppStage">Starting stage</label><select id="newOppStage">' + stageOptions('new_inquiry') + '</select></div>',
+      onSave: function(modalEl, done){
+        var companyName = document.getElementById('newOppCompany').value.trim();
+        var oppName = document.getElementById('newOppName').value.trim();
+        var contactEmail = document.getElementById('newOppContactEmail').value.trim();
 
-  function wireNewOpportunityForm(){
-    var saveBtn = document.getElementById('newOppSaveBtn');
-    if(!saveBtn) return;
-    saveBtn.addEventListener('click', function(){
-      var statusEl2 = document.getElementById('newOppStatus');
-      var companyName = document.getElementById('newOppCompany').value.trim();
-      var oppName = document.getElementById('newOppName').value.trim();
-      var contactEmail = document.getElementById('newOppContactEmail').value.trim();
-
-      if(!companyName || !oppName || !contactEmail){
-        statusEl2.textContent = 'Company name, opportunity name and contact email are required.';
-        statusEl2.classList.add('is-error');
-        return;
-      }
-
-      saveBtn.disabled = true;
-      statusEl2.textContent = 'Adding...';
-      statusEl2.classList.remove('is-error');
-
-      postJSON('/api/admin/opportunities', {
-        company_name: companyName,
-        name: oppName,
-        contact_name: document.getElementById('newOppContactName').value.trim(),
-        contact_email: contactEmail,
-        status: document.getElementById('newOppStage').value
-      }).then(function(result){
-        saveBtn.disabled = false;
-        if(!result.ok){
-          statusEl2.textContent = result.body.error || 'Could not add opportunity.';
-          statusEl2.classList.add('is-error');
+        if(!companyName || !oppName || !contactEmail){
+          done(false, 'Company name, opportunity name and contact email are required.');
           return;
         }
-        loadAdminDashboard(state.sessionToken);
-        openOpportunity(result.body.project.id);
-      });
+
+        postJSON('/api/admin/opportunities', {
+          company_name: companyName,
+          name: oppName,
+          contact_name: document.getElementById('newOppContactName').value.trim(),
+          contact_email: contactEmail,
+          status: document.getElementById('newOppStage').value
+        }).then(function(result){
+          if(!result.ok){ done(false, result.body.error || 'Could not add opportunity.'); return; }
+          done(true);
+          loadAdminDashboard(state.sessionToken);
+          openOpportunity(result.body.project.id);
+        });
+      }
     });
   }
 
   function renderAdminList(){
     var data = state.data || adminDemo;
     if(state.view === 'enquiries'){
-      list.innerHTML = data.enquiries.map(function(item){
-        return adminCard(item.company, item.email + ' · ' + item.application, item.message, item.status);
-      }).join('');
+      var enquiryRows = data.enquiries.map(function(item){
+        return rowItem({
+          title: item.company || (item.first_name + ' ' + item.last_name),
+          sub: item.email + ' · ' + item.application + (item.message ? ' — ' + item.message : ''),
+          status: item.status
+        });
+      });
+      list.innerHTML = '<article class="portal-card"><h3>Enquiries</h3>' + rowlistHtml(enquiryRows, 'No enquiries yet.') + '</article>';
     }
     if(state.view === 'projects'){
-      var cardsHtml = data.projects.map(function(item){
-        var meta = item.reference_code + ' · ' + (item.companies?.name || 'Company');
-        var body = 'Owner: ' + (item.owner ? (item.owner.name || item.owner.email) : 'Unassigned') +
+      var projectRows = data.projects.map(function(item){
+        var sub = (item.companies?.name || 'Company') + ' · Owner: ' + (item.owner ? (item.owner.name || item.owner.email) : 'Unassigned') +
           ' · Contact: ' + (item.contact ? (item.contact.name || item.contact.email) : 'No contact');
-        return '<div class="opportunity-row" data-open-project="' + esc(item.id) + '">' + adminCard(item.name, meta, body, item.status) + '</div>';
-      }).join('');
-      list.innerHTML = newOpportunityFormHtml() + (cardsHtml || '<article class="portal-card"><h2>No opportunities yet</h2><p>They show up here from an enquiry, or add one directly above.</p></article>');
+        return rowItem({
+          title: item.reference_code + ' — ' + item.name, sub: sub, status: item.status,
+          clickable: true, dataAttrs: ' data-open-project="' + esc(item.id) + '"'
+        });
+      });
+      list.innerHTML =
+        '<article class="portal-card">' +
+          '<div class="card-head"><h3>Opportunities</h3><button type="button" class="btn" id="newOppBtn">' + ICON_PLUS + 'New opportunity</button></div>' +
+          rowlistHtml(projectRows, 'No opportunities yet. They show up here from an enquiry, or add one directly.', true) +
+        '</article>';
       list.querySelectorAll('[data-open-project]').forEach(function(el){
         el.addEventListener('click', function(){ openOpportunity(el.getAttribute('data-open-project')); });
       });
-      wireNewOpportunityForm();
+      document.getElementById('newOppBtn').addEventListener('click', openNewOpportunityModal);
     }
     if(state.view === 'samples'){
-      list.innerHTML = data.samples.map(function(item){
+      var sampleRows = data.samples.map(function(item){
         var project = item.projects || {};
-        return adminCard(project.name || 'Sample request', (project.reference_code || 'Project') + ' · ' + (project.companies?.name || 'Company'), item.tracking_number ? 'Tracking: ' + item.tracking_number : 'No tracking number yet.', item.status);
-      }).join('');
+        return rowItem({
+          title: project.name || 'Sample request',
+          sub: (project.reference_code || 'Project') + ' · ' + (project.companies?.name || 'Company') + (item.tracking_number ? ' · Tracking ' + item.tracking_number : ''),
+          status: item.status
+        });
+      });
+      list.innerHTML = '<article class="portal-card"><h3>Samples</h3>' + rowlistHtml(sampleRows, 'No sample requests yet.') + '</article>';
     }
     if(state.view === 'clients'){
       renderClientsView(data);
@@ -571,387 +625,308 @@
       });
   }
 
+  function pipelineHtml(currentStatus){
+    var currentIndex = STAGES.findIndex(function(s){ return s[0] === currentStatus; });
+    return '<nav class="pipeline" aria-label="Pipeline stage">' + STAGES.map(function(pair, i){
+      var cls = pair[0] === currentStatus ? 'is-current' : (i < currentIndex ? 'is-done' : '');
+      return '<button type="button" class="pipeline__step ' + cls + '" data-stage="' + pair[0] + '" title="' + esc(pair[1]) + '">' +
+        '<span class="pipeline__bar"></span><span class="pipeline__label">' + esc(pair[1]) + '</span></button>';
+    }).join('') + '</nav>';
+  }
+
+  // Each section below the pipeline (samples, pilot, proposal, contract,
+  // documents, updates, notes) shares one shape: a list of compact rows,
+  // a "+" to add one via modal, and a pencil on each row to edit it via
+  // the same modal with fields pre-filled.
+  function oppSections(data){
+    return {
+      sample: {
+        label: 'sample', createLabel: 'Add sample', createUrl: '/api/admin/samples', updateUrl: '/api/admin/samples',
+        items: data.samples || [],
+        row: function(r){ return {title: labelStatus(r.status), sub: [r.shipping_name, r.tracking_number ? 'Tracking ' + r.tracking_number : null].filter(Boolean).join(' · ')}; },
+        fieldsHtml: function(r){
+          r = r || {};
+          return '<div class="frow">' +
+            '<div class="field"><label for="fShippingName">Shipping name</label><input id="fShippingName" value="' + esc(r.shipping_name || '') + '"></div>' +
+            '<div class="field"><label for="fTracking">Tracking number</label><input id="fTracking" value="' + esc(r.tracking_number || '') + '"></div>' +
+          '</div>' +
+          '<div class="field"><label for="fStatus">Status</label><select id="fStatus">' + ['requested', 'preparing', 'shipped', 'delivered'].map(function(v){ return '<option value="' + v + '"' + (v === (r.status || 'requested') ? ' selected' : '') + '>' + esc(labelStatus(v)) + '</option>'; }).join('') + '</select></div>';
+        },
+        payload: function(){
+          return {
+            shipping_name: document.getElementById('fShippingName').value,
+            tracking_number: document.getElementById('fTracking').value,
+            status: document.getElementById('fStatus').value
+          };
+        }
+      },
+      pilot: {
+        label: 'pilot', createLabel: 'Add pilot', createUrl: '/api/admin/pilots', updateUrl: '/api/admin/pilots',
+        items: data.pilots || [],
+        row: function(r){
+          var resultCount = (r.pilot_results || []).length;
+          return {title: labelStatus(r.status), sub: [r.success_criteria, (r.start_date || r.end_date) ? (r.start_date || '?') + ' – ' + (r.end_date || '?') : null, resultCount ? resultCount + ' result' + (resultCount > 1 ? 's' : '') : null].filter(Boolean).join(' · ')};
+        },
+        fieldsHtml: function(r){
+          r = r || {};
+          return '<div class="field"><label for="fCriteria">Success criteria</label><input id="fCriteria" value="' + esc(r.success_criteria || '') + '"></div>' +
+          '<div class="field"><label for="fStatus">Status</label><select id="fStatus">' + ['planned', 'in_progress', 'complete'].map(function(v){ return '<option value="' + v + '"' + (v === (r.status || 'planned') ? ' selected' : '') + '>' + esc(labelStatus(v)) + '</option>'; }).join('') + '</select></div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="fStart">Start date</label><input type="date" id="fStart" value="' + esc(r.start_date || '') + '"></div>' +
+            '<div class="field"><label for="fEnd">End date</label><input type="date" id="fEnd" value="' + esc(r.end_date || '') + '"></div>' +
+          '</div>';
+        },
+        payload: function(){
+          return {
+            success_criteria: document.getElementById('fCriteria').value,
+            status: document.getElementById('fStatus').value,
+            start_date: document.getElementById('fStart').value || null,
+            end_date: document.getElementById('fEnd').value || null
+          };
+        }
+      },
+      proposal: {
+        label: 'proposal', createLabel: 'Add proposal', createUrl: '/api/admin/proposals', updateUrl: '/api/admin/proposals',
+        items: data.proposals || [],
+        row: function(r){ return {title: labelStatus(r.status), sub: r.amount ? (r.currency || 'USD') + ' ' + r.amount : ''}; },
+        fieldsHtml: function(r){
+          r = r || {};
+          return '<div class="frow">' +
+            '<div class="field"><label for="fAmount">Amount</label><input type="number" id="fAmount" value="' + esc(r.amount || '') + '"></div>' +
+            '<div class="field"><label for="fCurrency">Currency</label><input id="fCurrency" value="' + esc(r.currency || 'USD') + '"></div>' +
+          '</div>' +
+          '<div class="field"><label for="fStatus">Status</label><select id="fStatus">' + ['draft', 'sent', 'accepted', 'declined'].map(function(v){ return '<option value="' + v + '"' + (v === (r.status || 'draft') ? ' selected' : '') + '>' + esc(labelStatus(v)) + '</option>'; }).join('') + '</select></div>';
+        },
+        payload: function(){
+          return {
+            amount: document.getElementById('fAmount').value || null,
+            currency: document.getElementById('fCurrency').value || 'USD',
+            status: document.getElementById('fStatus').value
+          };
+        }
+      },
+      contract: {
+        label: 'contract', createLabel: 'Add contract', createUrl: '/api/admin/contracts', updateUrl: '/api/admin/contracts',
+        items: data.contracts || [],
+        row: function(r){ return {title: labelStatus(r.status), sub: r.value ? (r.currency || 'USD') + ' ' + r.value : ''}; },
+        fieldsHtml: function(r){
+          r = r || {};
+          return '<div class="frow">' +
+            '<div class="field"><label for="fValue">Value</label><input type="number" id="fValue" value="' + esc(r.value || '') + '"></div>' +
+            '<div class="field"><label for="fCurrency">Currency</label><input id="fCurrency" value="' + esc(r.currency || 'USD') + '"></div>' +
+          '</div>' +
+          '<div class="field"><label for="fStatus">Status</label><select id="fStatus">' + ['pending', 'signed', 'active', 'ended'].map(function(v){ return '<option value="' + v + '"' + (v === (r.status || 'pending') ? ' selected' : '') + '>' + esc(labelStatus(v)) + '</option>'; }).join('') + '</select></div>';
+        },
+        payload: function(){
+          return {
+            value: document.getElementById('fValue').value || null,
+            currency: document.getElementById('fCurrency').value || 'USD',
+            status: document.getElementById('fStatus').value
+          };
+        }
+      },
+      document: {
+        label: 'document', createLabel: 'Add document', createUrl: '/api/admin/documents', updateUrl: '/api/admin/documents',
+        items: data.documents || [],
+        row: function(r){ return {title: r.title, sub: [labelStatus(r.visibility), r.document_type].filter(Boolean).join(' · ')}; },
+        fieldsHtml: function(r){
+          r = r || {};
+          return '<div class="frow">' +
+            '<div class="field"><label for="fTitle">Title</label><input id="fTitle" value="' + esc(r.title || '') + '"></div>' +
+            '<div class="field"><label for="fUrl">URL</label><input id="fUrl" value="' + esc(r.url || '') + '"></div>' +
+          '</div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="fType">Type</label><input id="fType" placeholder="e.g. spec sheet" value="' + esc(r.document_type || '') + '"></div>' +
+            '<div class="field"><label for="fVisibility">Visibility</label><select id="fVisibility"><option value="client"' + (r.visibility !== 'internal' ? ' selected' : '') + '>Client-visible</option><option value="internal"' + (r.visibility === 'internal' ? ' selected' : '') + '>Internal only</option></select></div>' +
+          '</div>';
+        },
+        payload: function(){
+          return {
+            title: document.getElementById('fTitle').value,
+            url: document.getElementById('fUrl').value,
+            document_type: document.getElementById('fType').value,
+            visibility: document.getElementById('fVisibility').value
+          };
+        }
+      },
+      clientUpdate: {
+        label: 'client update', createLabel: 'Post update', createUrl: null, updateUrl: '/api/admin/updates',
+        items: data.updates || [],
+        row: function(r){ return {title: r.body, sub: ''}; },
+        fieldsHtml: function(r){ r = r || {}; return '<div class="field"><label for="fBody">Update</label><textarea id="fBody" placeholder="Shown to the client">' + esc(r.body || '') + '</textarea></div>'; },
+        payload: function(){ return {body: document.getElementById('fBody').value}; }
+      },
+      note: {
+        label: 'internal note', createLabel: 'Add note', createUrl: null, updateUrl: '/api/admin/notes',
+        items: data.notes || [],
+        row: function(r){ return {title: r.body, sub: '— ' + r.created_by}; },
+        fieldsHtml: function(r){ r = r || {}; return '<div class="field"><label for="fBody">Note</label><textarea id="fBody" placeholder="Admin only, never shown to the client">' + esc(r.body || '') + '</textarea></div>'; },
+        payload: function(){ return {body: document.getElementById('fBody').value}; }
+      }
+    };
+  }
+
   function renderOpportunityDetail(){
     var data = state.opportunity;
     var project = data.project;
     var admins = (state.data && state.data.admins) || [];
+    var sections = oppSections(data);
 
-    var ownerOptions = '<option value="">Unassigned</option>' + admins.map(function(a){
-      return '<option value="' + esc(a.id) + '"' + (project.owner && project.owner.email === a.email ? ' selected' : '') + '>' + esc(a.name || a.email) + '</option>';
-    }).join('');
+    function reload(){ openOpportunity(project.id); }
 
-    var samplesHtml = (data.samples || []).map(function(s){
-      return '<p class="portal-note editable-row" data-edit="sample" data-id="' + esc(s.id) + '">' + esc(labelStatus(s.status)) + (s.tracking_number ? ' · Tracking ' + esc(s.tracking_number) : '') + (s.shipping_name ? ' · ' + esc(s.shipping_name) : '') + ' <span class="portal-ref">Edit</span></p>';
-    }).join('') || '<p class="portal-note">No sample requests yet.</p>';
+    function openRecordModal(type, record){
+      var cfg = sections[type];
+      openModal({
+        title: (record ? 'Edit ' : 'Add ') + cfg.label,
+        saveLabel: record ? 'Save' : cfg.createLabel,
+        bodyHtml: cfg.fieldsHtml(record),
+        onSave: function(modalEl, done){
+          var url = record ? cfg.updateUrl : cfg.createUrl;
+          var body = record ? Object.assign({id: record.id}, cfg.payload()) : Object.assign({project_id: project.id}, cfg.payload());
+          var request = record ? patchJSON(url, body) : postJSON(url, body);
+          request.then(function(result){
+            if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
+            done(true);
+            reload();
+          });
+        }
+      });
+    }
 
-    var pilotsHtml = (data.pilots || []).map(function(p){
-      var results = (p.pilot_results || []).map(function(r){
-        return '<li>' + (r.outcome ? esc(r.outcome.toUpperCase()) + ' — ' : '') + esc(r.summary) + '</li>';
-      }).join('');
-      return '<div class="portal-note editable-row" data-edit="pilot" data-id="' + esc(p.id) + '"><b>' + esc(labelStatus(p.status)) + '</b>' + (p.success_criteria ? ' — ' + esc(p.success_criteria) : '') +
-        (p.start_date || p.end_date ? ' (' + esc(p.start_date || '?') + ' to ' + esc(p.end_date || '?') + ')' : '') + ' <span class="portal-ref">Edit</span>' +
-        (results ? '<ul class="portal-updates">' + results + '</ul>' : '') + '</div>';
-    }).join('') || '<p class="portal-note">No pilots yet.</p>';
+    function sectionHtml(type, heading){
+      var cfg = sections[type];
+      var rows = cfg.items.map(function(item){
+        var r = cfg.row(item);
+        var extraHtml = type === 'pilot'
+          ? '<button type="button" class="icon-btn" data-add-result="' + esc(item.id) + '" aria-label="Record pilot result" title="Record pilot result">' + ICON_PLUS + '</button>'
+          : '';
+        return rowItem({title: r.title, sub: r.sub, clickable: true, extraHtml: extraHtml, dataAttrs: ' data-open-record="' + type + '" data-id="' + esc(item.id) + '"'});
+      });
+      return '<article class="portal-card">' +
+        '<div class="card-head"><h3>' + esc(heading) + '</h3><button type="button" class="icon-btn icon-btn--accent" data-add-record="' + type + '" aria-label="' + esc(cfg.createLabel) + '">' + ICON_PLUS + '</button></div>' +
+        rowlistHtml(rows, 'Nothing recorded yet.', true) +
+      '</article>';
+    }
 
-    var proposalsHtml = (data.proposals || []).map(function(p){
-      return '<p class="portal-note editable-row" data-edit="proposal" data-id="' + esc(p.id) + '">' + esc(labelStatus(p.status)) + (p.amount ? ' · ' + esc(p.currency || 'USD') + ' ' + esc(p.amount) : '') + ' <span class="portal-ref">Edit</span></p>';
-    }).join('') || '<p class="portal-note">No proposals yet.</p>';
-
-    var contractsHtml = (data.contracts || []).map(function(c){
-      return '<p class="portal-note editable-row" data-edit="contract" data-id="' + esc(c.id) + '">' + esc(labelStatus(c.status)) + (c.value ? ' · ' + esc(c.currency || 'USD') + ' ' + esc(c.value) : '') + ' <span class="portal-ref">Edit</span></p>';
-    }).join('') || '<p class="portal-note">No contracts yet.</p>';
-
-    var documentsHtml = (data.documents || []).map(function(d){
-      return '<li class="editable-row" data-edit="document" data-id="' + esc(d.id) + '"><a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(d.title) + '</a> · ' + esc(labelStatus(d.visibility)) + (d.document_type ? ' · ' + esc(d.document_type) : '') + ' <span class="portal-ref">Edit</span></li>';
-    }).join('') || '<li>No documents yet.</li>';
-
-    var updatesHtml = (data.updates || []).map(function(u){
-      return '<li class="editable-row" data-edit="clientUpdate" data-id="' + esc(u.id) + '">' + esc(u.body) + ' <span class="portal-ref">Edit</span></li>';
-    }).join('') || '<li>No client updates yet.</li>';
-
-    var notesHtml = (data.notes || []).map(function(n){
-      return '<div class="internal-note editable-row" data-edit="note" data-id="' + esc(n.id) + '">' + esc(n.body) + ' <span class="portal-ref">— ' + esc(n.created_by) + ' · Edit</span></div>';
-    }).join('') || '<p class="portal-note">No internal notes yet.</p>';
+    function openPilotResultModal(pilotId){
+      openModal({
+        title: 'Record pilot result',
+        saveLabel: 'Save result',
+        bodyHtml:
+          '<div class="field"><label for="fOutcome">Outcome</label><select id="fOutcome"><option value="">Select outcome</option><option value="pass">Pass</option><option value="partial">Partial</option><option value="fail">Fail</option></select></div>' +
+          '<div class="field"><label for="fSummary">Summary</label><textarea id="fSummary"></textarea></div>',
+        onSave: function(modalEl, done){
+          var summary = document.getElementById('fSummary').value;
+          if(!summary){ done(false, 'A summary is required.'); return; }
+          postJSON('/api/admin/pilot-results', {
+            pilot_id: pilotId,
+            outcome: document.getElementById('fOutcome').value || null,
+            summary: summary
+          }).then(function(result){
+            if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
+            done(true);
+            reload();
+          });
+        }
+      });
+    }
 
     list.innerHTML =
       '<button type="button" class="btn" id="oppBackBtn">Back to opportunities</button>' +
       '<article class="portal-card">' +
         '<div class="portal-card__top"><div><p class="portal-ref">' + esc(project.reference_code) + '</p><h2>' + esc(project.name) + '</h2></div><span class="pill">' + esc(labelStatus(project.status)) + '</span></div>' +
         '<dl class="portal-meta"><div><dt>Company</dt><dd>' + esc(project.companies?.name || 'Company') + '</dd></div><div><dt>Contact</dt><dd>' + esc(project.contact?.name || project.contact?.email || 'No contact') + '</dd></div><div><dt>Owner</dt><dd>' + esc(project.owner?.name || project.owner?.email || 'Unassigned') + '</dd></div></dl>' +
-        '<div class="frow">' +
-          '<div class="field"><label for="oppStageSelect">Pipeline stage</label><select id="oppStageSelect">' + stageOptions(project.status) + '</select></div>' +
-          '<div class="field"><label for="oppOwnerSelect">Owner</label><select id="oppOwnerSelect">' + ownerOptions + '</select></div>' +
+        pipelineHtml(project.status) +
+        '<div class="card-head">' +
+          '<p class="portal-note" style="flex:1">' +
+            (project.polymer ? '<b>Polymer:</b> ' + esc(project.polymer) + ' &nbsp; ' : '') +
+            (project.process ? '<b>Process:</b> ' + esc(project.process) + ' &nbsp; ' : '') +
+            (project.target ? esc(project.target) : (project.polymer || project.process ? '' : 'No polymer, process or target set yet.')) +
+          '</p>' +
+          '<button type="button" class="icon-btn" id="oppDetailsEditBtn" aria-label="Edit details">' + ICON_PENCIL + '</button>' +
         '</div>' +
-        '<div class="frow">' +
-          '<div class="field"><label for="oppPolymer">Polymer</label><input id="oppPolymer" value="' + esc(project.polymer || '') + '"></div>' +
-          '<div class="field"><label for="oppProcess">Process</label><input id="oppProcess" value="' + esc(project.process || '') + '"></div>' +
-        '</div>' +
-        '<div class="field"><label for="oppTarget">Target</label><input id="oppTarget" value="' + esc(project.target || '') + '"></div>' +
-        '<button type="button" class="btn btn--solid" id="oppSaveBtn">Save opportunity</button>' +
-        '<p class="portal-status" id="oppSaveStatus"></p>' +
       '</article>' +
 
-      '<article class="portal-card"><h3>Samples</h3>' + samplesHtml +
-        '<div class="frow">' +
-          '<div class="field"><label for="sampleShippingName">Shipping name</label><input id="sampleShippingName"></div>' +
-          '<div class="field"><label for="sampleTracking">Tracking number</label><input id="sampleTracking"></div>' +
-        '</div>' +
-        '<div class="field"><label for="sampleStatus">Status</label><select id="sampleStatus"><option value="requested">Requested</option><option value="preparing">Preparing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option></select></div>' +
-        '<button type="button" class="btn" id="sampleSaveBtn">Record sample</button>' +
-        '<button type="button" class="btn" id="sampleCancelBtn" hidden>Cancel edit</button>' +
-      '</article>' +
-
-      '<article class="portal-card"><h3>Pilot</h3>' + pilotsHtml +
-        '<div class="frow">' +
-          '<div class="field"><label for="pilotCriteria">Success criteria</label><input id="pilotCriteria"></div>' +
-          '<div class="field"><label for="pilotStatus">Status</label><select id="pilotStatus"><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="complete">Complete</option></select></div>' +
-        '</div>' +
-        '<div class="frow">' +
-          '<div class="field"><label for="pilotStart">Start date</label><input type="date" id="pilotStart"></div>' +
-          '<div class="field"><label for="pilotEnd">End date</label><input type="date" id="pilotEnd"></div>' +
-        '</div>' +
-        '<button type="button" class="btn" id="pilotSaveBtn">Record pilot</button>' +
-        '<button type="button" class="btn" id="pilotCancelBtn" hidden>Cancel edit</button>' +
-        (data.pilots && data.pilots.length ? (
-          '<div class="frow" style="margin-top:16px">' +
-            '<div class="field"><label for="pilotResultOutcome">Result outcome (latest pilot)</label><select id="pilotResultOutcome"><option value="">Select outcome</option><option value="pass">Pass</option><option value="partial">Partial</option><option value="fail">Fail</option></select></div>' +
-            '<div class="field"><label for="pilotResultSummary">Summary</label><input id="pilotResultSummary"></div>' +
-          '</div>' +
-          '<button type="button" class="btn" id="pilotResultSaveBtn">Record pilot result</button>'
-        ) : '') +
-      '</article>' +
-
-      '<article class="portal-card"><h3>Proposal</h3>' + proposalsHtml +
-        '<div class="frow">' +
-          '<div class="field"><label for="proposalAmount">Amount</label><input type="number" id="proposalAmount"></div>' +
-          '<div class="field"><label for="proposalCurrency">Currency</label><input id="proposalCurrency" value="USD"></div>' +
-        '</div>' +
-        '<div class="field"><label for="proposalStatus">Status</label><select id="proposalStatus"><option value="draft">Draft</option><option value="sent">Sent</option><option value="accepted">Accepted</option><option value="declined">Declined</option></select></div>' +
-        '<button type="button" class="btn" id="proposalSaveBtn">Record proposal</button>' +
-        '<button type="button" class="btn" id="proposalCancelBtn" hidden>Cancel edit</button>' +
-      '</article>' +
-
-      '<article class="portal-card"><h3>Contract</h3>' + contractsHtml +
-        '<div class="frow">' +
-          '<div class="field"><label for="contractValue">Value</label><input type="number" id="contractValue"></div>' +
-          '<div class="field"><label for="contractCurrency">Currency</label><input id="contractCurrency" value="USD"></div>' +
-        '</div>' +
-        '<div class="field"><label for="contractStatus">Status</label><select id="contractStatus"><option value="pending">Pending</option><option value="signed">Signed</option><option value="active">Active</option><option value="ended">Ended</option></select></div>' +
-        '<button type="button" class="btn" id="contractSaveBtn">Record contract</button>' +
-        '<button type="button" class="btn" id="contractCancelBtn" hidden>Cancel edit</button>' +
-      '</article>' +
-
-      '<article class="portal-card"><h3>Documents</h3><ul class="portal-updates">' + documentsHtml + '</ul>' +
-        '<div class="frow">' +
-          '<div class="field"><label for="documentTitle">Title</label><input id="documentTitle"></div>' +
-          '<div class="field"><label for="documentUrl">URL</label><input id="documentUrl"></div>' +
-        '</div>' +
-        '<div class="frow">' +
-          '<div class="field"><label for="documentType">Type</label><input id="documentType" placeholder="e.g. spec sheet"></div>' +
-          '<div class="field"><label for="documentVisibility">Visibility</label><select id="documentVisibility"><option value="client">Client-visible</option><option value="internal">Internal only</option></select></div>' +
-        '</div>' +
-        '<button type="button" class="btn" id="documentSaveBtn">Add document</button>' +
-        '<button type="button" class="btn" id="documentCancelBtn" hidden>Cancel edit</button>' +
-      '</article>' +
-
-      '<article class="portal-card"><h3>Client-visible updates</h3><ul class="portal-updates">' + updatesHtml + '</ul>' +
-        '<div class="field"><label for="clientUpdateBody">New update</label><input id="clientUpdateBody" placeholder="Shown to the client"></div>' +
-        '<button type="button" class="btn" id="clientUpdateSaveBtn">Post client update</button>' +
-        '<button type="button" class="btn" id="clientUpdateCancelBtn" hidden>Cancel edit</button>' +
-      '</article>' +
-
-      '<article class="portal-card"><h3>Internal notes</h3>' + notesHtml +
-        '<div class="field"><label for="internalNoteBody">New note</label><input id="internalNoteBody" placeholder="Admin only, never shown to the client"></div>' +
-        '<button type="button" class="btn" id="internalNoteSaveBtn">Add internal note</button>' +
-        '<button type="button" class="btn" id="internalNoteCancelBtn" hidden>Cancel edit</button>' +
-      '</article>';
+      sectionHtml('sample', 'Samples') +
+      sectionHtml('pilot', 'Pilot') +
+      sectionHtml('proposal', 'Proposal') +
+      sectionHtml('contract', 'Contract') +
+      sectionHtml('document', 'Documents') +
+      sectionHtml('clientUpdate', 'Client-visible updates') +
+      sectionHtml('note', 'Internal notes');
 
     document.getElementById('oppBackBtn').addEventListener('click', backToOpportunities);
 
-    document.getElementById('oppSaveBtn').addEventListener('click', function(){
-      var saveStatus = document.getElementById('oppSaveStatus');
-      saveStatus.textContent = 'Saving...';
-      saveStatus.classList.remove('is-error');
-      patchJSON('/api/admin/projects', {
-        id: project.id,
-        status: document.getElementById('oppStageSelect').value,
-        owner_id: document.getElementById('oppOwnerSelect').value || null,
-        polymer: document.getElementById('oppPolymer').value,
-        process: document.getElementById('oppProcess').value,
-        target: document.getElementById('oppTarget').value
-      }).then(function(result){
-        if(!result.ok){
-          saveStatus.textContent = result.body.error || 'Could not save.';
-          saveStatus.classList.add('is-error');
-          return;
-        }
-        openOpportunity(project.id);
-      });
-    });
-
-    document.getElementById('clientUpdateSaveBtn').addEventListener('click', function(){
-      if(editing && editing.type === 'clientUpdate') return;
-      var body = document.getElementById('clientUpdateBody').value;
-      if(!body) return;
-      patchJSON('/api/admin/projects', {id: project.id, client_update: body}).then(function(){ openOpportunity(project.id); });
-    });
-
-    document.getElementById('internalNoteSaveBtn').addEventListener('click', function(){
-      if(editing && editing.type === 'note') return;
-      var body = document.getElementById('internalNoteBody').value;
-      if(!body) return;
-      patchJSON('/api/admin/projects', {id: project.id, internal_note: body}).then(function(){ openOpportunity(project.id); });
-    });
-
-    // Record sections: each has a create form that becomes an edit form when
-    // an existing entry is clicked, switching the save button to a PATCH
-    // against the record's id instead of a POST against the project.
-    var recordSections = {
-      sample: {
-        items: data.samples || [],
-        saveBtn: 'sampleSaveBtn', cancelBtn: 'sampleCancelBtn',
-        createUrl: '/api/admin/samples', updateUrl: '/api/admin/samples',
-        createLabel: 'Record sample', updateLabel: 'Update sample',
-        populate: function(r){
-          document.getElementById('sampleShippingName').value = r.shipping_name || '';
-          document.getElementById('sampleTracking').value = r.tracking_number || '';
-          document.getElementById('sampleStatus').value = r.status || 'requested';
-        },
-        reset: function(){
-          document.getElementById('sampleShippingName').value = '';
-          document.getElementById('sampleTracking').value = '';
-          document.getElementById('sampleStatus').value = 'requested';
-        },
-        payload: function(){
-          return {
-            shipping_name: document.getElementById('sampleShippingName').value,
-            tracking_number: document.getElementById('sampleTracking').value,
-            status: document.getElementById('sampleStatus').value
-          };
-        }
-      },
-      pilot: {
-        items: data.pilots || [],
-        saveBtn: 'pilotSaveBtn', cancelBtn: 'pilotCancelBtn',
-        createUrl: '/api/admin/pilots', updateUrl: '/api/admin/pilots',
-        createLabel: 'Record pilot', updateLabel: 'Update pilot',
-        populate: function(r){
-          document.getElementById('pilotCriteria').value = r.success_criteria || '';
-          document.getElementById('pilotStatus').value = r.status || 'planned';
-          document.getElementById('pilotStart').value = r.start_date || '';
-          document.getElementById('pilotEnd').value = r.end_date || '';
-        },
-        reset: function(){
-          document.getElementById('pilotCriteria').value = '';
-          document.getElementById('pilotStatus').value = 'planned';
-          document.getElementById('pilotStart').value = '';
-          document.getElementById('pilotEnd').value = '';
-        },
-        payload: function(){
-          return {
-            success_criteria: document.getElementById('pilotCriteria').value,
-            status: document.getElementById('pilotStatus').value,
-            start_date: document.getElementById('pilotStart').value || null,
-            end_date: document.getElementById('pilotEnd').value || null
-          };
-        }
-      },
-      proposal: {
-        items: data.proposals || [],
-        saveBtn: 'proposalSaveBtn', cancelBtn: 'proposalCancelBtn',
-        createUrl: '/api/admin/proposals', updateUrl: '/api/admin/proposals',
-        createLabel: 'Record proposal', updateLabel: 'Update proposal',
-        populate: function(r){
-          document.getElementById('proposalAmount').value = r.amount || '';
-          document.getElementById('proposalCurrency').value = r.currency || 'USD';
-          document.getElementById('proposalStatus').value = r.status || 'draft';
-        },
-        reset: function(){
-          document.getElementById('proposalAmount').value = '';
-          document.getElementById('proposalCurrency').value = 'USD';
-          document.getElementById('proposalStatus').value = 'draft';
-        },
-        payload: function(){
-          return {
-            amount: document.getElementById('proposalAmount').value || null,
-            currency: document.getElementById('proposalCurrency').value || 'USD',
-            status: document.getElementById('proposalStatus').value
-          };
-        }
-      },
-      contract: {
-        items: data.contracts || [],
-        saveBtn: 'contractSaveBtn', cancelBtn: 'contractCancelBtn',
-        createUrl: '/api/admin/contracts', updateUrl: '/api/admin/contracts',
-        createLabel: 'Record contract', updateLabel: 'Update contract',
-        populate: function(r){
-          document.getElementById('contractValue').value = r.value || '';
-          document.getElementById('contractCurrency').value = r.currency || 'USD';
-          document.getElementById('contractStatus').value = r.status || 'pending';
-        },
-        reset: function(){
-          document.getElementById('contractValue').value = '';
-          document.getElementById('contractCurrency').value = 'USD';
-          document.getElementById('contractStatus').value = 'pending';
-        },
-        payload: function(){
-          return {
-            value: document.getElementById('contractValue').value || null,
-            currency: document.getElementById('contractCurrency').value || 'USD',
-            status: document.getElementById('contractStatus').value
-          };
-        }
-      },
-      document: {
-        items: data.documents || [],
-        saveBtn: 'documentSaveBtn', cancelBtn: 'documentCancelBtn',
-        createUrl: '/api/admin/documents', updateUrl: '/api/admin/documents',
-        createLabel: 'Add document', updateLabel: 'Update document',
-        populate: function(r){
-          document.getElementById('documentTitle').value = r.title || '';
-          document.getElementById('documentUrl').value = r.url || '';
-          document.getElementById('documentType').value = r.document_type || '';
-          document.getElementById('documentVisibility').value = r.visibility || 'client';
-        },
-        reset: function(){
-          document.getElementById('documentTitle').value = '';
-          document.getElementById('documentUrl').value = '';
-          document.getElementById('documentType').value = '';
-          document.getElementById('documentVisibility').value = 'client';
-        },
-        payload: function(){
-          return {
-            title: document.getElementById('documentTitle').value,
-            url: document.getElementById('documentUrl').value,
-            document_type: document.getElementById('documentType').value,
-            visibility: document.getElementById('documentVisibility').value
-          };
-        }
-      },
-      clientUpdate: {
-        items: data.updates || [],
-        saveBtn: 'clientUpdateSaveBtn', cancelBtn: 'clientUpdateCancelBtn',
-        createUrl: null, updateUrl: '/api/admin/updates',
-        createLabel: 'Post client update', updateLabel: 'Update',
-        populate: function(r){ document.getElementById('clientUpdateBody').value = r.body || ''; },
-        reset: function(){ document.getElementById('clientUpdateBody').value = ''; },
-        payload: function(){ return {body: document.getElementById('clientUpdateBody').value}; }
-      },
-      note: {
-        items: data.notes || [],
-        saveBtn: 'internalNoteSaveBtn', cancelBtn: 'internalNoteCancelBtn',
-        createUrl: null, updateUrl: '/api/admin/notes',
-        createLabel: 'Add internal note', updateLabel: 'Update note',
-        populate: function(r){ document.getElementById('internalNoteBody').value = r.body || ''; },
-        reset: function(){ document.getElementById('internalNoteBody').value = ''; },
-        payload: function(){ return {body: document.getElementById('internalNoteBody').value}; }
-      }
-    };
-
-    var editing = null; // {type, id}
-
-    function stopEditing(type){
-      var cfg = recordSections[type];
-      editing = null;
-      cfg.reset();
-      document.getElementById(cfg.saveBtn).textContent = cfg.createLabel;
-      document.getElementById(cfg.cancelBtn).hidden = true;
-    }
-
-    Object.keys(recordSections).forEach(function(type){
-      var cfg = recordSections[type];
-      var cancelBtn = document.getElementById(cfg.cancelBtn);
-      if(cancelBtn) cancelBtn.addEventListener('click', function(){ stopEditing(type); });
-    });
-
-    list.querySelectorAll('[data-edit]').forEach(function(el){
-      el.addEventListener('click', function(){
-        var type = el.getAttribute('data-edit');
-        var id = el.getAttribute('data-id');
-        var cfg = recordSections[type];
-        var record = cfg.items.find(function(item){ return String(item.id) === id; });
-        if(!cfg || !record) return;
-        editing = {type: type, id: id};
-        cfg.populate(record);
-        document.getElementById(cfg.saveBtn).textContent = cfg.updateLabel;
-        document.getElementById(cfg.cancelBtn).hidden = false;
-        el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-      });
-    });
-
-    Object.keys(recordSections).forEach(function(type){
-      var cfg = recordSections[type];
-      var btn = document.getElementById(cfg.saveBtn);
-      if(!btn) return;
-      btn.addEventListener('click', function(){
-        if(editing && editing.type === type){
-          patchJSON(cfg.updateUrl, Object.assign({id: editing.id}, cfg.payload())).then(function(result){
-            if(!result.ok) return;
-            stopEditing(type);
-            openOpportunity(project.id);
+    document.getElementById('oppDetailsEditBtn').addEventListener('click', function(){
+      var ownerOptions = '<option value="">Unassigned</option>' + admins.map(function(a){
+        return '<option value="' + esc(a.id) + '"' + (project.owner && project.owner.email === a.email ? ' selected' : '') + '>' + esc(a.name || a.email) + '</option>';
+      }).join('');
+      openModal({
+        title: 'Edit details',
+        saveLabel: 'Save',
+        bodyHtml:
+          '<div class="field"><label for="fOwner">Owner</label><select id="fOwner">' + ownerOptions + '</select></div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="fPolymer">Polymer</label><input id="fPolymer" value="' + esc(project.polymer || '') + '"></div>' +
+            '<div class="field"><label for="fProcess">Process</label><input id="fProcess" value="' + esc(project.process || '') + '"></div>' +
+          '</div>' +
+          '<div class="field"><label for="fTarget">Target</label><input id="fTarget" value="' + esc(project.target || '') + '"></div>',
+        onSave: function(modalEl, done){
+          patchJSON('/api/admin/projects', {
+            id: project.id,
+            owner_id: document.getElementById('fOwner').value || null,
+            polymer: document.getElementById('fPolymer').value,
+            process: document.getElementById('fProcess').value,
+            target: document.getElementById('fTarget').value
+          }).then(function(result){
+            if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
+            done(true);
+            reload();
           });
-          return;
         }
-        if(!cfg.createUrl) return;
-        var body = Object.assign({project_id: project.id}, cfg.payload());
-        postJSON(cfg.createUrl, body).then(function(result){
-          if(!result.ok) return;
-          openOpportunity(project.id);
+      });
+    });
+
+    list.querySelectorAll('.pipeline__step').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var stage = btn.getAttribute('data-stage');
+        if(stage === project.status) return;
+        var label = STAGES.find(function(s){ return s[0] === stage; })[1];
+        openModal({
+          title: 'Move to "' + label + '"?',
+          saveLabel: 'Move stage',
+          bodyHtml: '<p class="portal-note">This updates the opportunity\'s pipeline stage. The client sees the new stage next time they open the portal.</p>',
+          onSave: function(modalEl, done){
+            patchJSON('/api/admin/projects', {id: project.id, status: stage}).then(function(result){
+              if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
+              done(true);
+              reload();
+            });
+          }
         });
       });
     });
 
-    var pilotResultBtn = document.getElementById('pilotResultSaveBtn');
-    if(pilotResultBtn){
-      pilotResultBtn.addEventListener('click', function(){
-        var latestPilot = data.pilots[0];
-        postJSON('/api/admin/pilot-results', {
-          pilot_id: latestPilot.id,
-          outcome: document.getElementById('pilotResultOutcome').value || null,
-          summary: document.getElementById('pilotResultSummary').value
-        }).then(function(){ openOpportunity(project.id); });
+    list.querySelectorAll('[data-add-record]').forEach(function(btn){
+      btn.addEventListener('click', function(){ openRecordModal(btn.getAttribute('data-add-record'), null); });
+    });
+
+    list.querySelectorAll('[data-add-result]').forEach(function(btn){
+      btn.addEventListener('click', function(event){
+        event.stopPropagation();
+        openPilotResultModal(btn.getAttribute('data-add-result'));
       });
-    }
+    });
+
+    list.querySelectorAll('[data-open-record]').forEach(function(el){
+      el.addEventListener('click', function(event){
+        if(event.target.closest('[data-add-result]')) return;
+        var type = el.getAttribute('data-open-record');
+        var id = el.getAttribute('data-id');
+        var record = sections[type].items.find(function(item){ return String(item.id) === id; });
+        if(record) openRecordModal(type, record);
+      });
+    });
   }
 
   function loadAdminDashboard(sessionToken){
