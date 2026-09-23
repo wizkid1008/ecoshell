@@ -199,6 +199,23 @@
     return String(status || 'new').replace(/_/g, ' ');
   }
 
+  var STALE_DAYS = 14;
+
+  function daysSince(dateString){
+    if(!dateString) return null;
+    return Math.max(0, Math.floor((Date.now() - new Date(dateString).getTime()) / 86400000));
+  }
+
+  // Small badge showing how long an opportunity has sat in its current
+  // stage, flagged once it's been there longer than STALE_DAYS, so a stuck
+  // deal is visible from the list without opening it.
+  function stageAgeHtml(item){
+    var days = daysSince(item.stage_changed_at || item.created_at);
+    if(days === null) return '';
+    var label = days + (days === 1 ? ' day' : ' days');
+    return '<span class="stage-age' + (days >= STALE_DAYS ? ' stage-age--stale' : '') + '">' + esc(label) + '</span>';
+  }
+
   function esc(value){
     return String(value || '').replace(/[&<>"']/g, function(char){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char];
@@ -688,7 +705,7 @@
         ' · Contact: ' + (item.contact ? (item.contact.name || item.contact.email) : 'No contact');
       return rowItem({
         title: item.reference_code + ' — ' + item.name, sub: sub,
-        clickable: true, dataAttrs: ' data-open-project="' + esc(item.id) + '"'
+        clickable: true, extraHtml: stageAgeHtml(item), dataAttrs: ' data-open-project="' + esc(item.id) + '"'
       });
     });
     list.innerHTML =
@@ -957,7 +974,7 @@
 
     list.innerHTML =
       '<article class="portal-card">' +
-        '<div class="portal-card__top"><div><p class="portal-ref">' + esc(project.reference_code) + '</p><h2>' + esc(project.name) + '</h2></div><span class="pill">' + esc(labelStatus(project.status)) + '</span></div>' +
+        '<div class="portal-card__top"><div><p class="portal-ref">' + esc(project.reference_code) + '</p><h2>' + esc(project.name) + '</h2></div><div style="text-align:right;display:grid;gap:4px;justify-items:end"><span class="pill">' + esc(labelStatus(project.status)) + '</span>' + stageAgeHtml(project) + '</div></div>' +
         '<dl class="portal-meta"><div><dt>Company</dt><dd>' + esc(project.companies?.name || 'Company') + '</dd></div><div><dt>Contact</dt><dd>' + esc(project.contact?.name || project.contact?.email || 'No contact') + '</dd></div><div><dt>Owner</dt><dd>' + esc(project.owner?.name || project.owner?.email || 'Unassigned') + '</dd></div></dl>' +
         '<div class="card-head">' +
           '<p class="portal-note" style="flex:1">' +

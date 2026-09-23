@@ -13,7 +13,7 @@ export async function opportunityDetail({request, env}) {
 
   try {
     const [projectRows, samples, pilots, proposals, contracts, documents, updates, notes] = await Promise.all([
-      supabaseFetch(env, `projects?id=eq.${id}&select=id,reference_code,name,status,polymer,process,target,created_at,companies(id,name,industry,archetype,country),owner:users!owner_id(id,name,email),contact:users!contact_id(id,name,email,job_title,phone)`),
+      supabaseFetch(env, `projects?id=eq.${id}&select=id,reference_code,name,status,polymer,process,target,created_at,stage_changed_at,companies(id,name,industry,archetype,country),owner:users!owner_id(id,name,email),contact:users!contact_id(id,name,email,job_title,phone)`),
       supabaseFetch(env, `sample_requests?project_id=eq.${id}&select=id,status,shipping_name,shipping_address,tracking_number,admin_note,created_at&order=created_at.desc`),
       supabaseFetch(env, `pilots?project_id=eq.${id}&select=id,status,success_criteria,start_date,end_date,created_at,pilot_results(id,outcome,summary,recorded_by,created_at)&order=created_at.desc`),
       supabaseFetch(env, `proposals?project_id=eq.${id}&select=id,status,amount,currency,terms,sent_at,created_at&order=created_at.desc`),

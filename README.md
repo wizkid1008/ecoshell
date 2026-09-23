@@ -147,7 +147,15 @@ Backend files:
 - `src/lib/pipeline.js` the fixed list of pipeline stage slugs.
 - `supabase/schema.sql` defines every table, RLS policy and seed (including
   a one-time `drop table` cleanup of the old split admin/client tables) and
-  seeds admin users (password unset until each one's first sign-in).
+  seeds admin users (password unset until each one's first sign-in). A
+  database with real opportunities in it already should NOT re-run the
+  whole file (it drops and recreates `projects`) — just run the single
+  `alter table` statement at the bottom to pick up new columns.
+
+Each stage view shows how many days an opportunity has sat there
+(`projects.stage_changed_at`, bumped whenever `adminProjectsUpdate` changes
+`status`), flagged once it passes 14 days, so a stuck deal is visible from
+the list without opening it.
 
 Required Cloudflare environment variables:
 

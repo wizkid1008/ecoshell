@@ -87,7 +87,8 @@ create table if not exists projects (
   target text,
   status text not null default 'new_inquiry',
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  stage_changed_at timestamptz not null default now()
 );
 
 create table if not exists sample_requests (
@@ -330,3 +331,9 @@ values
   ('andrew@ecoshell.eco', 'Andrew Bliss', 'admin'),
   ('doug@ecoshell.eco', 'Doug Hardesty', 'admin')
 on conflict (email) do nothing;
+
+-- Additive migration for existing databases with real opportunities already
+-- in them: do NOT re-run the whole file above (it drops and recreates
+-- projects, which would wipe them) -- just run this statement on its own.
+-- Already included in the create table above for fresh installs.
+alter table projects add column if not exists stage_changed_at timestamptz not null default now();

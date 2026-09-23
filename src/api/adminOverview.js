@@ -10,7 +10,7 @@ export async function adminOverview({request, env}) {
   try {
     const [enquiries, projects, samples, pilots, proposals, contracts, clients, admins, companies] = await Promise.all([
       supabaseFetch(env, 'enquiries?select=id,first_name,last_name,company,email,country,application,message,status,created_at&order=created_at.desc'),
-      supabaseFetch(env, 'projects?select=id,reference_code,name,status,polymer,process,target,created_at,companies(name),owner:users!owner_id(name,email),contact:users!contact_id(name,email)&order=created_at.desc'),
+      supabaseFetch(env, 'projects?select=id,reference_code,name,status,polymer,process,target,created_at,stage_changed_at,companies(name),owner:users!owner_id(name,email),contact:users!contact_id(name,email)&order=created_at.desc'),
       supabaseFetch(env, 'sample_requests?select=id,status,shipping_name,tracking_number,created_at,projects(reference_code,name,companies(name))&order=created_at.desc'),
       supabaseFetch(env, 'pilots?select=id,status,success_criteria,start_date,end_date,created_at,projects(reference_code,name,companies(name))&order=created_at.desc'),
       supabaseFetch(env, 'proposals?select=id,status,amount,currency,sent_at,created_at,projects(reference_code,name,companies(name))&order=created_at.desc'),

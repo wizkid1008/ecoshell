@@ -343,6 +343,8 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 .rowlist__sub{color:var(--stone);font-size:13px;margin:2px 0 0}
 .rowlist__empty{background:var(--mist);padding:16px 14px;color:var(--stone);font-size:14.5px;text-align:center}
 .rowlist--clickable .rowlist__item{cursor:pointer}
+.stage-age{font-family:var(--f-display);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--stone-2);flex:none;white-space:nowrap}
+.stage-age--stale{color:#C0392B;font-weight:600}
 
 /* ---------- pipeline stepper ---------- */
 /* Vertical pipeline stepper — lives in the sidebar (dark) while viewing one

@@ -20,6 +20,7 @@ export async function adminProjectsUpdate({request, env}) {
     if (payload[key] !== undefined) update[key] = payload[key];
   });
   if (payload.owner_id !== undefined) update.owner_id = payload.owner_id || null;
+  if (update.status !== undefined) update.stage_changed_at = new Date().toISOString();
 
   try {
     if (update.owner_id) {
@@ -27,7 +28,7 @@ export async function adminProjectsUpdate({request, env}) {
       if (!owners.length) return json({error: 'Owner must be an existing admin.'}, {status: 400});
     }
 
-    const project = await supabaseFetch(env, `projects?id=eq.${payload.id}&select=id,reference_code,status`, {
+    const project = await supabaseFetch(env, `projects?id=eq.${payload.id}&select=id,reference_code,status,stage_changed_at`, {
       method: 'PATCH',
       headers: {prefer: 'return=representation'},
       body: JSON.stringify(update)
