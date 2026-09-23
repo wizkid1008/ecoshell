@@ -27,6 +27,7 @@
   var ICON_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   var ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
   var ICON_BACK = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
+  var ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg>';
 
   // ---------- modal ----------
   // openModal renders a popup with a body and Save/Cancel footer. onSave receives
@@ -119,6 +120,7 @@
   var ICON_DASHBOARD = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>';
   var ICON_CLIENTS = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
   var ICON_ACCOUNT = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+  var ICON_ADMIN = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
 
   function navItem(view, icon, label){
     return '<button type="button" class="app-nav__item" data-view="' + view + '">' + icon + label + '</button>';
@@ -144,6 +146,7 @@
       closed.map(function(pair){ return stageNavItem(pair, counts[pair[0]] || 0); }).join('') +
       '<p class="app-nav__label">Workspace</p>' +
       navItem('clients', ICON_CLIENTS, 'Contacts') +
+      navItem('lists', ICON_ADMIN, 'Admin') +
       navItem('account', ICON_ACCOUNT, 'Account');
   }
 
@@ -290,6 +293,10 @@
 
   function patchJSON(url, data){
     return apiFetch(url, {method: 'PATCH', headers: {'content-type': 'application/json'}, body: JSON.stringify(data)});
+  }
+
+  function deleteJSON(url, data){
+    return apiFetch(url, {method: 'DELETE', headers: {'content-type': 'application/json'}, body: JSON.stringify(data)});
   }
 
   function enterDashboard(role, email, status){
@@ -720,6 +727,83 @@
     });
   }
 
+  // Full add/remove management for the Industry and Archetype lookup
+  // tables, as their own admin page rather than the inline "+ Add" link
+  // buried in the contact/company editors.
+  function renderListsView(){
+    heading.textContent = 'Admin';
+    kpis.hidden = true;
+
+    function listCardHtml(id, title){
+      return '<article class="portal-card">' +
+        '<h3>' + esc(title) + '</h3>' +
+        '<div class="card-head">' +
+          '<input type="text" class="search-input" id="' + id + 'NewInput" placeholder="Add a new ' + esc(title.toLowerCase().replace(/s$/, '')) + '" style="flex:1;max-width:none">' +
+          '<button type="button" class="btn" id="' + id + 'AddBtn">' + ICON_PLUS + 'Add</button>' +
+        '</div>' +
+        '<div id="' + id + 'Rowlist"></div>' +
+      '</article>';
+    }
+
+    list.innerHTML = listCardHtml('industries', 'Industries') + listCardHtml('archetypes', 'Archetypes');
+
+    function renderRows(table, id){
+      var values = (table === 'industries' ? industriesCache : archetypesCache) || [];
+      var rows = values.map(function(name){
+        return rowItem({
+          title: name,
+          extraHtml: '<button type="button" class="icon-btn" data-delete-list="' + table + '" data-name="' + esc(name) + '" aria-label="Delete" title="Delete">' + ICON_TRASH + '</button>'
+        });
+      });
+      document.getElementById(id + 'Rowlist').innerHTML = rowlistHtml(rows, 'Nothing added yet.', false);
+      wireRows(table, id);
+    }
+
+    function wireRows(table, id){
+      document.querySelectorAll('#' + id + 'Rowlist [data-delete-list]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var name = btn.getAttribute('data-name');
+          openModal({
+            title: 'Remove "' + name + '"?',
+            saveLabel: 'Remove',
+            bodyHtml: '<p class="portal-note">Existing contacts/companies already using this value keep it — this only removes it from the dropdown for new entries.</p>',
+            onSave: function(modalEl, done){
+              deleteJSON('/api/admin/' + table, {name: name}).then(function(result){
+                if(!result.ok){ done(false, result.body.error || 'Could not remove.'); return; }
+                if(table === 'industries') industriesCache = result.body.industries;
+                else archetypesCache = result.body.archetypes;
+                done(true);
+                renderRows(table, id);
+              });
+            }
+          });
+        });
+      });
+    }
+
+    function wireAdd(table, id){
+      document.getElementById(id + 'AddBtn').addEventListener('click', function(){
+        var input = document.getElementById(id + 'NewInput');
+        var name = input.value.trim();
+        if(!name) return;
+        postJSON('/api/admin/' + table, {name: name}).then(function(result){
+          if(!result.ok) return;
+          if(table === 'industries') industriesCache = result.body.industries;
+          else archetypesCache = result.body.archetypes;
+          input.value = '';
+          renderRows(table, id);
+        });
+      });
+    }
+
+    ensureLists().then(function(){
+      renderRows('industries', 'industries');
+      renderRows('archetypes', 'archetypes');
+      wireAdd('industries', 'industries');
+      wireAdd('archetypes', 'archetypes');
+    });
+  }
+
   function openNewOpportunityModal(defaultStage){
     openModal({
       title: 'New opportunity',
@@ -797,6 +881,9 @@
     }
     if(state.view === 'clients'){
       renderClientsView(data);
+    }
+    if(state.view === 'lists'){
+      renderListsView();
     }
   }
 
