@@ -11,6 +11,7 @@ import {
   polymersList, processesList, polymerCreate, processCreate, polymerDelete, processDelete
 } from './api/lists.js';
 import {opportunityDetail} from './api/adminOpportunity.js';
+import {companiesImport} from './api/companiesImport.js';
 import {
   opportunityCreate,
   sampleCreate,
@@ -55,6 +56,7 @@ const routes = [
   {method: 'PATCH', path: '/api/admin/documents', handler: documentUpdate},
   {method: 'PATCH', path: '/api/admin/notes', handler: noteUpdate},
   {method: 'PATCH', path: '/api/admin/updates', handler: clientUpdateEdit},
+  {method: 'POST', path: '/api/admin/companies/import', handler: companiesImport},
   {method: 'POST', path: '/api/admin/companies', handler: companyCreate},
   {method: 'PATCH', path: '/api/admin/companies', handler: companyUpdate},
   {method: 'POST', path: '/api/admin/contacts', handler: contactCreate},

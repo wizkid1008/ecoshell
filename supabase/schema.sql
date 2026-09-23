@@ -32,7 +32,33 @@ create table if not exists companies (
   industry text,
   archetype text,
   country text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Account-research/scoring fields, mainly populated via bulk import of a
+  -- target-account list -- company-level only, never touches projects.
+  website text,
+  geography text,
+  sustainable_packaging_coalition text,
+  principal_product_target text,
+  material_types text,
+  technical_process_fit text,
+  rank integer,
+  time_to_paid_revenue integer,
+  revenue_12_24m integer,
+  downstream_multiplier integer,
+  technical_fit integer,
+  commitment_potential integer,
+  strategic_value integer,
+  engineering_efficiency integer,
+  regulatory_simplicity integer,
+  weighted_score integer,
+  priority_tier text,
+  commercial_gate_status text,
+  why_it_fits text,
+  recommended_entry_proposition text,
+  next_action text,
+  scoring_basis text,
+  account_owner text,
+  notes text
 );
 
 create table if not exists users (
@@ -480,3 +506,32 @@ alter table pilots add column if not exists created_by text;
 alter table proposals add column if not exists created_by text;
 alter table contracts add column if not exists created_by text;
 alter table project_documents add column if not exists created_by text;
+
+-- Account-research/scoring fields for a bulk-imported target-account list
+-- -- company-level only, never touches projects (see schema comment above
+-- for the full field list; already included in the create table above for
+-- fresh installs).
+alter table companies add column if not exists website text;
+alter table companies add column if not exists geography text;
+alter table companies add column if not exists sustainable_packaging_coalition text;
+alter table companies add column if not exists principal_product_target text;
+alter table companies add column if not exists material_types text;
+alter table companies add column if not exists technical_process_fit text;
+alter table companies add column if not exists rank integer;
+alter table companies add column if not exists time_to_paid_revenue integer;
+alter table companies add column if not exists revenue_12_24m integer;
+alter table companies add column if not exists downstream_multiplier integer;
+alter table companies add column if not exists technical_fit integer;
+alter table companies add column if not exists commitment_potential integer;
+alter table companies add column if not exists strategic_value integer;
+alter table companies add column if not exists engineering_efficiency integer;
+alter table companies add column if not exists regulatory_simplicity integer;
+alter table companies add column if not exists weighted_score integer;
+alter table companies add column if not exists priority_tier text;
+alter table companies add column if not exists commercial_gate_status text;
+alter table companies add column if not exists why_it_fits text;
+alter table companies add column if not exists recommended_entry_proposition text;
+alter table companies add column if not exists next_action text;
+alter table companies add column if not exists scoring_basis text;
+alter table companies add column if not exists account_owner text;
+alter table companies add column if not exists notes text;

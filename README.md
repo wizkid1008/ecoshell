@@ -159,6 +159,16 @@ Backend files:
   admin contact/company editors, polymers/processes back the Polymer/
   Process selects on an opportunity's Edit details popup. The Admin page
   under Workspace in the sidebar is the dedicated place to manage all four.
+- `src/api/companiesImport.js` bulk-imports a target-account CSV from the
+  Companies card's "Import CSV" button. Each row creates/updates a company
+  (matched by name) with its research/scoring fields (`companies.website`,
+  `.rank`, `.weighted_score`, `.why_it_fits`, etc. — see the account-
+  research columns in `schema.sql`) and, only where an email is present, a
+  contact — never a `projects` row, since this is unengaged prospect
+  research, not an active deal. New Industry/Archetype values found in the
+  file are added automatically. The frontend parses the CSV client-side
+  (`portal.js`'s `parseCSVTable`, handling quoted/multi-line fields) and
+  posts it in small batches to stay under the Worker's subrequest limit.
 - `src/lib/supabase.js` shared Supabase REST helpers.
 - `src/lib/password.js` PBKDF2 password hashing/verification.
 - `src/lib/auth.js` resolves a session token to its `users` row (id, email,

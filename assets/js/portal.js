@@ -619,6 +619,7 @@
         '<div class="card-head"><h3>Companies</h3>' +
           '<div style="display:flex;gap:10px;align-items:center">' +
             '<input type="search" class="search-input" id="companiesSearch" placeholder="Search companies...">' +
+            '<button type="button" class="btn" id="importCompaniesBtn">' + ICON_PLUS + 'Import CSV</button>' +
             '<button type="button" class="btn" id="addCompanyBtn">' + ICON_PLUS + 'Add company</button>' +
           '</div>' +
         '</div>' +
@@ -632,6 +633,7 @@
     document.getElementById('companiesSearch').addEventListener('input', function(event){ renderCompanies(event.target.value); });
     document.getElementById('addContactBtn').addEventListener('click', openNewContactModal);
     document.getElementById('addCompanyBtn').addEventListener('click', openNewCompanyModal);
+    document.getElementById('importCompaniesBtn').addEventListener('click', openCompaniesImportModal);
   }
 
   function openNewContactModal(){
@@ -708,6 +710,168 @@
           });
         }
       });
+    });
+  }
+
+  // Header names are matched loosely (lowercased, non-alphanumeric chars
+  // stripped) so "12?24M Revenue" and "12-24M Revenue" both resolve to the
+  // same field regardless of how a spreadsheet export mangled the dash.
+  var IMPORT_FIELD_MAP = {
+    company: 'company_name',
+    contactname: 'contact_name',
+    contacttitle: 'contact_title',
+    contactphone: 'contact_phone',
+    contactlinkedin: 'contact_linkedin',
+    contactemail: 'contact_email',
+    archetype: 'archetype',
+    industry: 'industry',
+    geography: 'geography',
+    website: 'website',
+    sustainablepackagingcoalition: 'sustainable_packaging_coalition',
+    principalproducttarget: 'principal_product_target',
+    materialtypes: 'material_types',
+    technicalprocessfit: 'technical_process_fit',
+    rank: 'rank',
+    timetopaidrevenue: 'time_to_paid_revenue',
+    '1224mrevenue': 'revenue_12_24m',
+    downstreammultiplier: 'downstream_multiplier',
+    technicalfit: 'technical_fit',
+    commitmentpotential: 'commitment_potential',
+    strategicvalue: 'strategic_value',
+    engineeringefficiency: 'engineering_efficiency',
+    regulatorysimplicity: 'regulatory_simplicity',
+    weightedscore: 'weighted_score',
+    prioritytier: 'priority_tier',
+    commercialgatestatus: 'commercial_gate_status',
+    whyitfits: 'why_it_fits',
+    recommendedentryproposition: 'recommended_entry_proposition',
+    nextaction: 'next_action',
+    scoringbasis: 'scoring_basis',
+    accountowner: 'account_owner',
+    notes: 'notes'
+  };
+  var IMPORT_NUMERIC_FIELDS = [
+    'rank', 'time_to_paid_revenue', 'revenue_12_24m', 'downstream_multiplier', 'technical_fit',
+    'commitment_potential', 'strategic_value', 'engineering_efficiency', 'regulatory_simplicity', 'weighted_score'
+  ];
+
+  function normalizeHeader(h){
+    return String(h || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  // A small RFC4180-ish CSV parser (quoted fields, embedded commas/
+  // newlines, "" as an escaped quote) — this data has multi-paragraph
+  // quoted notes, so a naive split(',') would corrupt rows.
+  function parseCSVTable(text){
+    var rows = [];
+    var row = [];
+    var field = '';
+    var inQuotes = false;
+    for(var i = 0; i < text.length; i++){
+      var c = text[i];
+      if(inQuotes){
+        if(c === '"'){
+          if(text[i + 1] === '"'){ field += '"'; i++; }
+          else { inQuotes = false; }
+        } else {
+          field += c;
+        }
+      } else if(c === '"'){
+        inQuotes = true;
+      } else if(c === ','){
+        row.push(field); field = '';
+      } else if(c === '\n'){
+        row.push(field); rows.push(row); row = []; field = '';
+      } else if(c === '\r'){
+        // ignore — \r\n line endings are handled by the \n branch
+      } else {
+        field += c;
+      }
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  function csvToImportRows(text){
+    var table = parseCSVTable(text);
+    if(!table.length) return [];
+    var headers = table[0].map(normalizeHeader);
+    return table.slice(1).map(function(cells){
+      var row = {};
+      headers.forEach(function(h, i){
+        var key = IMPORT_FIELD_MAP[h];
+        if(!key) return;
+        var value = (cells[i] || '').trim();
+        if(!value) return;
+        if(IMPORT_NUMERIC_FIELDS.indexOf(key) !== -1){
+          var num = parseFloat(value);
+          if(!isNaN(num)) row[key] = num;
+        } else {
+          row[key] = value;
+        }
+      });
+      return row;
+    }).filter(function(row){ return row.company_name; });
+  }
+
+  function openCompaniesImportModal(){
+    openModal({
+      title: 'Import companies (CSV)',
+      saveLabel: 'Import',
+      bodyHtml:
+        '<div class="field"><label for="importFile">CSV file</label><input type="file" id="importFile" accept=".csv"></div>' +
+        '<p class="portal-note">Creates or updates a company for every row (matched by name), and a contact only where an email is present — never an opportunity. Unrecognized columns are ignored; new Industry/Archetype values are added automatically.</p>',
+      onSave: function(modalEl, done){
+        var file = document.getElementById('importFile').files[0];
+        if(!file){ done(false, 'Choose a CSV file.'); return; }
+
+        var footStatus = document.getElementById('modalFootStatus');
+        var reader = new FileReader();
+        reader.onload = function(){
+          var rows;
+          try {
+            rows = csvToImportRows(String(reader.result));
+          } catch(err){
+            done(false, 'Could not read that file.');
+            return;
+          }
+          if(!rows.length){ done(false, 'No rows with a company name were found in that file.'); return; }
+
+          var BATCH_SIZE = 8;
+          var totals = {companiesCreated: 0, companiesUpdated: 0, contactsCreated: 0, contactsSkipped: 0, errors: []};
+          var index = 0;
+
+          function nextBatch(){
+            if(index >= rows.length){
+              var summary = totals.companiesCreated + ' compan' + (totals.companiesCreated === 1 ? 'y' : 'ies') + ' added, ' +
+                totals.companiesUpdated + ' updated, ' + totals.contactsCreated + ' contact' + (totals.contactsCreated === 1 ? '' : 's') + ' added' +
+                (totals.contactsSkipped ? ', ' + totals.contactsSkipped + ' contact(s) already existed' : '') +
+                (totals.errors.length ? ', ' + totals.errors.length + ' row(s) had errors' : '') + '.';
+              done(true);
+              loadAdminDashboard(state.sessionToken);
+              window.alert(summary);
+              return;
+            }
+            var batch = rows.slice(index, index + BATCH_SIZE);
+            index += BATCH_SIZE;
+            if(footStatus) footStatus.textContent = 'Importing ' + Math.min(index, rows.length) + ' / ' + rows.length + '...';
+            postJSON('/api/admin/companies/import', {rows: batch}).then(function(result){
+              if(result.ok){
+                totals.companiesCreated += result.body.companiesCreated || 0;
+                totals.companiesUpdated += result.body.companiesUpdated || 0;
+                totals.contactsCreated += result.body.contactsCreated || 0;
+                totals.contactsSkipped += result.body.contactsSkipped || 0;
+                totals.errors = totals.errors.concat(result.body.errors || []);
+              } else {
+                totals.errors.push(result.body.error || 'A batch failed.');
+              }
+              nextBatch();
+            });
+          }
+          nextBatch();
+        };
+        reader.readAsText(file);
+      }
     });
   }
 
