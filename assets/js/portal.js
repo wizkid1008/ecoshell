@@ -281,12 +281,28 @@
   // for that opportunity's own pipeline position, so it's clear where this
   // particular client sits without scrolling back up to the top of the page.
   function renderOppNav(project){
+    var companyName = project.companies?.name;
+    var siblings = ((state.data || adminDemo).projects || []).filter(function(p){
+      return companyName && p.companies && p.companies.name === companyName && p.id !== project.id;
+    });
+    var siblingsHtml = siblings.length ? (
+      '<p class="app-nav__label">Also for ' + esc(companyName) + '</p>' +
+      siblings.map(function(p){
+        return '<button type="button" class="app-nav__item" data-switch-opp="' + esc(p.id) + '">' + esc(p.name) + '<span class="app-nav__count">' + esc(labelStatus(p.status)) + '</span></button>';
+      }).join('')
+    ) : '';
+
     appNav.innerHTML =
       '<button type="button" class="app-nav__item" id="oppNavBackBtn">' + ICON_BACK + 'Back to pipeline</button>' +
       '<p class="app-nav__label">' + esc(project.reference_code) + '</p>' +
-      pipelineHtml(project.status);
+      pipelineHtml(project.status) +
+      siblingsHtml;
 
     document.getElementById('oppNavBackBtn').addEventListener('click', backToOpportunities);
+
+    appNav.querySelectorAll('[data-switch-opp]').forEach(function(btn){
+      btn.addEventListener('click', function(){ openOpportunity(btn.getAttribute('data-switch-opp')); });
+    });
 
     appNav.querySelectorAll('.pipeline__step').forEach(function(btn){
       btn.addEventListener('click', function(){
