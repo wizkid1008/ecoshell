@@ -1,4 +1,4 @@
-import {cleanString, json, pgQuote, requireEnv, supabaseFetch} from '../lib/supabase.js';
+import {cleanString, json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 import {resolveSession} from '../lib/auth.js';
 
 function makeListGet(table) {
@@ -51,7 +51,7 @@ function makeListDelete(table) {
     if (!name) return json({error: 'A name is required.'}, {status: 400});
 
     try {
-      await supabaseFetch(env, `${table}?name=eq.${encodeURIComponent(pgQuote(name))}`, {method: 'DELETE'});
+      await supabaseFetch(env, `${table}?name=eq.${encodeURIComponent(name)}`, {method: 'DELETE'});
       const rows = await supabaseFetch(env, `${table}?select=name&order=name.asc`);
       return json({[table]: rows.map((row) => row.name)});
     } catch (error) {

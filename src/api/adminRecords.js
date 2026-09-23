@@ -1,4 +1,4 @@
-import {cleanString, json, pgQuote, requireEnv, supabaseFetch} from '../lib/supabase.js';
+import {cleanString, json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 import {resolveSession} from '../lib/auth.js';
 import {findOrCreateCompany} from '../lib/companies.js';
 import {isValidStage} from '../lib/pipeline.js';
@@ -373,7 +373,7 @@ export async function companyCreate({request, env}) {
   const extra = pick(payload, ['industry', 'archetype', 'country']);
 
   try {
-    const existing = await supabaseFetch(env, `companies?name=ilike.${encodeURIComponent(pgQuote(name))}&select=id`);
+    const existing = await supabaseFetch(env, `companies?name=ilike.${encodeURIComponent(name)}&select=id`);
     let rows;
     if (existing[0]) {
       rows = Object.keys(extra).length

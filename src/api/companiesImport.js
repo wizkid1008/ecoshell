@@ -1,4 +1,4 @@
-import {cleanString, json, pgQuote, requireEnv, supabaseFetch} from '../lib/supabase.js';
+import {cleanString, json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 import {resolveSession} from '../lib/auth.js';
 
 const COMPANY_FIELDS = [
@@ -64,7 +64,7 @@ export async function companiesImport({request, env}) {
       const companyFields = pick(row, COMPANY_FIELDS);
       if (companyFields.industry && String(companyFields.industry).toLowerCase() === 'n/a') delete companyFields.industry;
 
-      const existing = await supabaseFetch(env, `companies?name=ilike.${encodeURIComponent(pgQuote(name))}&select=id`);
+      const existing = await supabaseFetch(env, `companies?name=ilike.${encodeURIComponent(name)}&select=id`);
       let companyId;
       if (existing[0]) {
         companyId = existing[0].id;
