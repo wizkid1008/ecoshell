@@ -443,8 +443,19 @@
       return '<button type="button" class="icon-btn" data-' + attr + '="' + esc(id) + '" aria-label="Edit profile" title="Edit profile">' + ICON_PENCIL + '</button>';
     };
 
+    function oppCountLabel(n){
+      return n ? n + ' opportunit' + (n === 1 ? 'y' : 'ies') : 'No opportunities yet';
+    }
+
+    var oppCountByEmail = {};
+    var oppCountByCompany = {};
+    (data.projects || []).forEach(function(p){
+      if(p.contact && p.contact.email) oppCountByEmail[p.contact.email] = (oppCountByEmail[p.contact.email] || 0) + 1;
+      if(p.companies && p.companies.name) oppCountByCompany[p.companies.name] = (oppCountByCompany[p.companies.name] || 0) + 1;
+    });
+
     var clientRows = clients.map(function(item){
-      var details = [item.company_name, item.job_title, item.industry].filter(Boolean).join(' · ') || 'No profile details yet';
+      var details = [item.company_name, item.job_title, item.industry, oppCountLabel(oppCountByEmail[item.email])].filter(Boolean).join(' · ');
       return rowItem({
         title: item.name || item.email, sub: details, status: item.status || 'lead',
         clickable: true, extraHtml: editIcon('edit-client', item.id),
@@ -453,7 +464,7 @@
     });
 
     var companyRows = companies.map(function(item){
-      var details = [item.industry, item.archetype, item.country].filter(Boolean).join(' · ') || 'No company details yet';
+      var details = [item.industry, item.archetype, item.country, oppCountLabel(oppCountByCompany[item.name])].filter(Boolean).join(' · ');
       return rowItem({
         title: item.name, sub: details, clickable: true,
         extraHtml: editIcon('edit-company', item.id),
