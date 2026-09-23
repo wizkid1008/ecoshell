@@ -173,6 +173,30 @@
     return '<datalist id="companyOptions">' + companies.map(function(c){ return '<option value="' + esc(c.name) + '">'; }).join('') + '</datalist>';
   }
 
+  // Same idea for contact email: typing an existing one both suggests it
+  // and (via wireContactAutofill below) fills in that contact's name and
+  // company instead of creating a duplicate contact/company.
+  function contactDatalistHtml(){
+    var clients = (state.data || adminDemo).clients || [];
+    return '<datalist id="contactOptions">' + clients.map(function(c){ return '<option value="' + esc(c.email) + '">' + esc(c.name || c.email) + '</option>'; }).join('') + '</datalist>';
+  }
+
+  function wireContactAutofill(emailFieldId, nameFieldId, companyFieldId, noteFieldId){
+    var clients = (state.data || adminDemo).clients || [];
+    var emailField = document.getElementById(emailFieldId);
+    if(!emailField) return;
+    emailField.addEventListener('input', function(){
+      var match = clients.find(function(c){ return c.email.toLowerCase() === emailField.value.trim().toLowerCase(); });
+      var noteField = noteFieldId && document.getElementById(noteFieldId);
+      if(noteField) noteField.hidden = !match;
+      if(!match) return;
+      var nameField = document.getElementById(nameFieldId);
+      var companyField = document.getElementById(companyFieldId);
+      if(nameField && match.name) nameField.value = match.name;
+      if(companyField && match.company_name) companyField.value = match.company_name;
+    });
+  }
+
   function wireAddListLinks(root){
     root.querySelectorAll('[data-add-list]').forEach(function(btn){
       btn.addEventListener('click', function(){
@@ -816,10 +840,14 @@
         '</div>' +
         '<div class="frow">' +
           '<div class="field"><label for="newOppContactName">Contact name</label><input id="newOppContactName" placeholder="Jordan Lee"></div>' +
-          '<div class="field"><label for="newOppContactEmail">Contact email</label><input id="newOppContactEmail" type="email" placeholder="jordan@acme.com"></div>' +
+          '<div class="field"><label for="newOppContactEmail">Contact email</label><input id="newOppContactEmail" type="email" list="contactOptions" placeholder="jordan@acme.com"></div>' +
         '</div>' +
+        '<p class="portal-note" id="newOppExistingNote" hidden>Existing contact — company and name filled in from their profile.</p>' +
         '<div class="field"><label for="newOppStage">Starting stage</label><select id="newOppStage">' + stageOptions(defaultStage || 'new_inquiry') + '</select></div>' +
-        companyDatalistHtml(),
+        companyDatalistHtml() + contactDatalistHtml(),
+      onMount: function(modalEl){
+        wireContactAutofill('newOppContactEmail', 'newOppContactName', 'newOppCompany', 'newOppExistingNote');
+      },
       onSave: function(modalEl, done){
         var companyName = document.getElementById('newOppCompany').value.trim();
         var oppName = document.getElementById('newOppName').value.trim();
