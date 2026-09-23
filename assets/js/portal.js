@@ -816,45 +816,47 @@
   // Full add/remove management for the Industry and Archetype lookup
   // tables, as their own admin page rather than the inline "+ Add" link
   // buried in the contact/company editors.
+  var LISTS_CONFIG = [
+    {table: 'industries', title: 'Industries', singular: 'industry'},
+    {table: 'archetypes', title: 'Archetypes', singular: 'archetype'},
+    {table: 'polymers', title: 'Polymers', singular: 'polymer'},
+    {table: 'processes', title: 'Processes', singular: 'process'}
+  ];
+  var activeListsTab = 'industries';
+
+  // One tab active at a time (not four stacked cards) since these lists
+  // only grow, plus a search box and a capped/scrollable row list so a
+  // long list doesn't take over the page.
   function renderListsView(){
     heading.textContent = 'Admin';
     kpis.hidden = true;
 
-    function listCardHtml(id, title){
-      return '<article class="portal-card">' +
-        '<h3>' + esc(title) + '</h3>' +
-        '<div class="card-head">' +
-          '<input type="text" class="search-input" id="' + id + 'NewInput" placeholder="Add a new ' + esc(title.toLowerCase().replace(/s$/, '')) + '" style="flex:1;max-width:none">' +
-          '<button type="button" class="btn" id="' + id + 'AddBtn">' + ICON_PLUS + 'Add</button>' +
-        '</div>' +
-        '<div id="' + id + 'Rowlist"></div>' +
-      '</article>';
+    function currentConfig(){
+      return LISTS_CONFIG.find(function(c){ return c.table === activeListsTab; });
     }
 
-    var cards = [
-      {table: 'industries', title: 'Industries'},
-      {table: 'archetypes', title: 'Archetypes'},
-      {table: 'polymers', title: 'Polymers'},
-      {table: 'processes', title: 'Processes'}
-    ];
-    list.innerHTML = cards.map(function(c){ return listCardHtml(c.table, c.title); }).join('');
+    function tabsHtml(){
+      return '<div class="tabs">' + LISTS_CONFIG.map(function(c){
+        return '<button type="button" class="tabs__item' + (c.table === activeListsTab ? ' is-active' : '') + '" data-list-tab="' + c.table + '">' + esc(c.title) + '</button>';
+      }).join('') + '</div>';
+    }
 
-    function renderRows(table){
-      var values = LIST_TABLES[table].get() || [];
-      var rows = values.map(function(name){
+    function renderRows(query){
+      var cfg = currentConfig();
+      var values = LIST_TABLES[cfg.table].get() || [];
+      var q = (query || '').trim().toLowerCase();
+      var filtered = !q ? values : values.filter(function(name){ return name.toLowerCase().indexOf(q) !== -1; });
+      var rows = filtered.map(function(name){
         return rowItem({
           title: name,
-          extraHtml: '<button type="button" class="icon-btn" data-delete-list="' + table + '" data-name="' + esc(name) + '" aria-label="Delete" title="Delete">' + ICON_TRASH + '</button>'
+          extraHtml: '<button type="button" class="icon-btn" data-delete-list="' + esc(name) + '" aria-label="Delete" title="Delete">' + ICON_TRASH + '</button>'
         });
       });
-      document.getElementById(table + 'Rowlist').innerHTML = rowlistHtml(rows, 'Nothing added yet.', false);
-      wireRows(table);
-    }
-
-    function wireRows(table){
-      document.querySelectorAll('#' + table + 'Rowlist [data-delete-list]').forEach(function(btn){
+      document.getElementById('listsRowlist').innerHTML = rowlistHtml(rows, q ? 'No matches.' : 'Nothing added yet.', false);
+      document.querySelectorAll('#listsRowlist [data-delete-list]').forEach(function(btn){
         btn.addEventListener('click', function(){
-          var name = btn.getAttribute('data-name');
+          var name = btn.getAttribute('data-delete-list');
+          var table = activeListsTab;
           openModal({
             title: 'Remove "' + name + '"?',
             saveLabel: 'Remove',
@@ -864,7 +866,7 @@
                 if(!result.ok){ done(false, result.body.error || 'Could not remove.'); return; }
                 LIST_TABLES[table].set(result.body[table]);
                 done(true);
-                renderRows(table);
+                renderRows(document.getElementById('listsSearch').value);
               });
             }
           });
@@ -872,26 +874,41 @@
       });
     }
 
-    function wireAdd(table){
-      document.getElementById(table + 'AddBtn').addEventListener('click', function(){
-        var input = document.getElementById(table + 'NewInput');
-        var name = input.value.trim();
-        if(!name) return;
-        postJSON('/api/admin/' + table, {name: name}).then(function(result){
-          if(!result.ok) return;
-          LIST_TABLES[table].set(result.body[table]);
-          input.value = '';
-          renderRows(table);
+    function renderPanel(){
+      var cfg = currentConfig();
+      list.innerHTML =
+        tabsHtml() +
+        '<article class="portal-card">' +
+          '<input type="search" class="search-input" id="listsSearch" placeholder="Search ' + esc(cfg.title.toLowerCase()) + '..." style="width:100%;max-width:none">' +
+          '<div class="card-head">' +
+            '<input type="text" class="search-input" id="listsNewInput" placeholder="Add a new ' + esc(cfg.singular) + '" style="flex:1;max-width:none">' +
+            '<button type="button" class="btn" id="listsAddBtn">' + ICON_PLUS + 'Add</button>' +
+          '</div>' +
+          '<div id="listsRowlist" class="rowlist-scroll"></div>' +
+        '</article>';
+
+      list.querySelectorAll('[data-list-tab]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          activeListsTab = btn.getAttribute('data-list-tab');
+          renderPanel();
         });
       });
+      document.getElementById('listsSearch').addEventListener('input', function(event){ renderRows(event.target.value); });
+      document.getElementById('listsAddBtn').addEventListener('click', function(){
+        var input = document.getElementById('listsNewInput');
+        var name = input.value.trim();
+        if(!name) return;
+        postJSON('/api/admin/' + activeListsTab, {name: name}).then(function(result){
+          if(!result.ok) return;
+          LIST_TABLES[activeListsTab].set(result.body[activeListsTab]);
+          input.value = '';
+          renderRows(document.getElementById('listsSearch').value);
+        });
+      });
+      renderRows('');
     }
 
-    ensureLists().then(function(){
-      cards.forEach(function(c){
-        renderRows(c.table);
-        wireAdd(c.table);
-      });
-    });
+    ensureLists().then(renderPanel);
   }
 
   function openNewOpportunityModal(defaultStage){
