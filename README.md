@@ -125,7 +125,12 @@ Backend files:
   documents/updates joined in.
 - `src/api/adminOverview.js` returns the admin dashboard data — enquiries,
   opportunities, samples, pilots, proposals, contracts, clients, companies
-  and the admin list (for owner assignment). Requires `role: admin`.
+  (full research/scoring column set — see `src/lib/companyFields.js`) and
+  the admin list (for owner assignment). Requires `role: admin`.
+- `src/lib/companyFields.js` the shared list of `companies` research/
+  scoring columns (rank, weighted score, why it fits, etc.), used by the
+  CSV importer and the company edit endpoint/popup so they can't drift
+  out of sync with each other.
 - `src/api/adminOpportunity.js` returns the full detail bundle for one
   opportunity (used by the detail view). Requires `role: admin`.
 - `src/api/adminProjects.js` updates an opportunity's stage/owner/material

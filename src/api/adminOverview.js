@@ -17,7 +17,7 @@ export async function adminOverview({request, env}) {
       supabaseFetch(env, 'contracts?select=id,status,value,currency,signed_at,created_at,projects(reference_code,name,companies(name))&order=created_at.desc'),
       supabaseFetch(env, 'users?role=eq.member&select=id,email,name,status,company_name,job_title,phone,country,industry,archetype,linkedin_url,created_at&order=created_at.desc'),
       supabaseFetch(env, 'users?role=eq.admin&select=id,email,name&order=name.asc'),
-      supabaseFetch(env, 'companies?select=id,name,industry,archetype,country,created_at&order=created_at.desc')
+      supabaseFetch(env, 'companies?select=id,name,industry,archetype,country,website,geography,sustainable_packaging_coalition,principal_product_target,material_types,technical_process_fit,rank,time_to_paid_revenue,revenue_12_24m,downstream_multiplier,technical_fit,commitment_potential,strategic_value,engineering_efficiency,regulatory_simplicity,weighted_score,priority_tier,commercial_gate_status,why_it_fits,recommended_entry_proposition,next_action,scoring_basis,account_owner,notes,created_at&order=created_at.desc')
     ]);
 
     return json({enquiries, projects, samples, pilots, proposals, contracts, clients, admins, companies});

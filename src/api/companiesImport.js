@@ -1,14 +1,6 @@
 import {cleanString, json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 import {resolveSession} from '../lib/auth.js';
-
-const COMPANY_FIELDS = [
-  'industry', 'archetype', 'country', 'website', 'geography',
-  'sustainable_packaging_coalition', 'principal_product_target', 'material_types', 'technical_process_fit',
-  'rank', 'time_to_paid_revenue', 'revenue_12_24m', 'downstream_multiplier', 'technical_fit',
-  'commitment_potential', 'strategic_value', 'engineering_efficiency', 'regulatory_simplicity',
-  'weighted_score', 'priority_tier', 'commercial_gate_status', 'why_it_fits',
-  'recommended_entry_proposition', 'next_action', 'scoring_basis', 'account_owner', 'notes'
-];
+import {COMPANY_RESEARCH_FIELDS as COMPANY_FIELDS} from '../lib/companyFields.js';
 
 function pick(payload, fields) {
   const out = {};

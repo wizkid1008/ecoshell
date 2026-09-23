@@ -544,7 +544,8 @@
     }
 
     function companyRowHtml(item){
-      var details = [item.industry, item.archetype, item.country, oppCountLabel(oppCountByCompany[item.name])].filter(Boolean).join(' · ');
+      var activeOpportunity = (oppCountByCompany[item.name] || 0) > 0 ? 'Yes' : 'No';
+      var details = [item.archetype, item.industry, 'Active opportunity: ' + activeOpportunity].filter(Boolean).join(' · ');
       return rowItem({
         title: item.name, sub: details, clickable: true,
         extraHtml: editIcon('edit-company', item.id),
@@ -995,6 +996,17 @@
     });
   }
 
+  function companyEditField(fieldId, label, value, type){
+    return '<div class="field"><label for="' + fieldId + '">' + esc(label) + '</label><input id="' + fieldId + '"' + (type ? ' type="' + type + '"' : '') + ' value="' + esc(value === null || value === undefined ? '' : value) + '"></div>';
+  }
+  function companyEditPair(a, b){ return '<div class="frow">' + a + b + '</div>'; }
+  function companyEditTextarea(fieldId, label, value){
+    return '<div class="field"><label for="' + fieldId + '">' + esc(label) + '</label><textarea id="' + fieldId + '">' + esc(value || '') + '</textarea></div>';
+  }
+
+  // The full research/scoring field set imported from a target-account CSV
+  // (see companyFields.js on the backend) — previously only name/industry/
+  // archetype/country were shown here, even though ~23 other columns exist.
   function openCompanyModal(id){
     var data = state.data || adminDemo;
     var company = (data.companies || []).find(function(c){ return String(c.id) === id; });
@@ -1005,19 +1017,68 @@
         title: company.name,
         saveLabel: 'Save company',
         bodyHtml:
-          '<div class="field"><label for="companyEditName">Company name</label><input id="companyEditName" value="' + esc(company.name || '') + '"></div>' +
-          '<div class="frow">' +
-            '<div class="field"><label for="companyEditIndustry">Industry</label><select id="companyEditIndustry">' + optionsHtml(industriesCache || [], company.industry || '', 'Select an industry') + '</select></div>' +
-            '<div class="field"><label for="companyEditArchetype">Archetype</label><select id="companyEditArchetype">' + optionsHtml(archetypesCache || [], company.archetype || '', 'Select an archetype') + '</select></div>' +
-          '</div>' +
-          '<div class="field"><label for="companyEditCountry">Country</label><select id="companyEditCountry">' + optionsHtml(countriesCache || [], company.country || '', 'Select a country') + '</select></div>',
+          companyEditField('companyEditName', 'Company name', company.name) +
+          companyEditPair(
+            '<div class="field"><label for="companyEditIndustry">Industry</label><select id="companyEditIndustry">' + optionsHtml(industriesCache || [], company.industry || '', 'Select an industry') + '</select></div>',
+            '<div class="field"><label for="companyEditArchetype">Archetype</label><select id="companyEditArchetype">' + optionsHtml(archetypesCache || [], company.archetype || '', 'Select an archetype') + '</select></div>'
+          ) +
+          companyEditPair(
+            '<div class="field"><label for="companyEditCountry">Country</label><select id="companyEditCountry">' + optionsHtml(countriesCache || [], company.country || '', 'Select a country') + '</select></div>',
+            companyEditField('companyEditGeography', 'Geography (region)', company.geography)
+          ) +
+          companyEditField('companyEditWebsite', 'Website', company.website) +
+
+          '<p class="eyebrow" style="margin-top:6px">Scoring</p>' +
+          companyEditPair(companyEditField('companyEditRank', 'Rank', company.rank, 'number'), companyEditField('companyEditWeightedScore', 'Weighted score', company.weighted_score, 'number')) +
+          companyEditPair(companyEditField('companyEditPriorityTier', 'Priority tier', company.priority_tier), companyEditField('companyEditGateStatus', 'Commercial gate status', company.commercial_gate_status)) +
+          companyEditField('companyEditScoringBasis', 'Scoring basis', company.scoring_basis) +
+          companyEditPair(companyEditField('companyEditTimeToPaidRevenue', 'Time to paid revenue', company.time_to_paid_revenue, 'number'), companyEditField('companyEditRevenue1224', '12–24M revenue', company.revenue_12_24m, 'number')) +
+          companyEditPair(companyEditField('companyEditDownstreamMultiplier', 'Downstream multiplier', company.downstream_multiplier, 'number'), companyEditField('companyEditTechnicalFit', 'Technical fit', company.technical_fit, 'number')) +
+          companyEditPair(companyEditField('companyEditCommitmentPotential', 'Commitment potential', company.commitment_potential, 'number'), companyEditField('companyEditStrategicValue', 'Strategic value', company.strategic_value, 'number')) +
+          companyEditPair(companyEditField('companyEditEngineeringEfficiency', 'Engineering efficiency', company.engineering_efficiency, 'number'), companyEditField('companyEditRegulatorySimplicity', 'Regulatory simplicity', company.regulatory_simplicity, 'number')) +
+
+          '<p class="eyebrow" style="margin-top:6px">Fit &amp; notes</p>' +
+          companyEditPair(companyEditField('companyEditSPC', 'Sustainable Packaging Coalition', company.sustainable_packaging_coalition), companyEditField('companyEditAccountOwner', 'Account owner', company.account_owner)) +
+          companyEditField('companyEditProductTarget', 'Principal product target', company.principal_product_target) +
+          companyEditField('companyEditMaterialTypes', 'Material types', company.material_types) +
+          companyEditField('companyEditTechProcessFit', 'Technical / process fit', company.technical_process_fit) +
+          companyEditTextarea('companyEditWhyItFits', 'Why it fits', company.why_it_fits) +
+          companyEditTextarea('companyEditEntryProposition', 'Recommended entry proposition', company.recommended_entry_proposition) +
+          companyEditTextarea('companyEditNextAction', 'Next action', company.next_action) +
+          companyEditTextarea('companyEditNotes', 'Notes', company.notes),
         onSave: function(modalEl, done){
+          function val(fieldId){ return document.getElementById(fieldId).value.trim(); }
+          function numVal(fieldId){ var v = val(fieldId); return v === '' ? null : Number(v); }
           patchJSON('/api/admin/companies', {
             id: company.id,
-            name: document.getElementById('companyEditName').value,
-            industry: document.getElementById('companyEditIndustry').value,
-            archetype: document.getElementById('companyEditArchetype').value,
-            country: document.getElementById('companyEditCountry').value
+            name: val('companyEditName'),
+            industry: val('companyEditIndustry'),
+            archetype: val('companyEditArchetype'),
+            country: val('companyEditCountry'),
+            geography: val('companyEditGeography'),
+            website: val('companyEditWebsite'),
+            rank: numVal('companyEditRank'),
+            weighted_score: numVal('companyEditWeightedScore'),
+            priority_tier: val('companyEditPriorityTier'),
+            commercial_gate_status: val('companyEditGateStatus'),
+            scoring_basis: val('companyEditScoringBasis'),
+            time_to_paid_revenue: numVal('companyEditTimeToPaidRevenue'),
+            revenue_12_24m: numVal('companyEditRevenue1224'),
+            downstream_multiplier: numVal('companyEditDownstreamMultiplier'),
+            technical_fit: numVal('companyEditTechnicalFit'),
+            commitment_potential: numVal('companyEditCommitmentPotential'),
+            strategic_value: numVal('companyEditStrategicValue'),
+            engineering_efficiency: numVal('companyEditEngineeringEfficiency'),
+            regulatory_simplicity: numVal('companyEditRegulatorySimplicity'),
+            sustainable_packaging_coalition: val('companyEditSPC'),
+            account_owner: val('companyEditAccountOwner'),
+            principal_product_target: val('companyEditProductTarget'),
+            material_types: val('companyEditMaterialTypes'),
+            technical_process_fit: val('companyEditTechProcessFit'),
+            why_it_fits: val('companyEditWhyItFits'),
+            recommended_entry_proposition: val('companyEditEntryProposition'),
+            next_action: val('companyEditNextAction'),
+            notes: val('companyEditNotes')
           }).then(function(result){
             if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
             done(true);

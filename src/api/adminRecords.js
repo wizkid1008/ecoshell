@@ -3,6 +3,7 @@ import {resolveSession} from '../lib/auth.js';
 import {findOrCreateCompany} from '../lib/companies.js';
 import {isValidStage} from '../lib/pipeline.js';
 import {uploadDocumentFile, withSignedUrl} from '../lib/storage.js';
+import {COMPANY_RESEARCH_FIELDS, COMPANY_SELECT} from '../lib/companyFields.js';
 
 async function requireAdmin(request, env) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']);
@@ -343,11 +344,11 @@ export async function companyUpdate({request, env}) {
   const payload = await request.json();
   if (!payload.id) return json({error: 'id is required.'}, {status: 400});
 
-  const update = pick(payload, ['name', 'industry', 'archetype', 'country']);
+  const update = pick(payload, ['name', ...COMPANY_RESEARCH_FIELDS]);
   if (!Object.keys(update).length) return json({error: 'No fields to update.'}, {status: 400});
 
   try {
-    const rows = await supabaseFetch(env, `companies?id=eq.${payload.id}&select=id,name,industry,archetype,country,created_at`, {
+    const rows = await supabaseFetch(env, `companies?id=eq.${payload.id}&select=${COMPANY_SELECT}`, {
       method: 'PATCH',
       headers: {prefer: 'return=representation'},
       body: JSON.stringify(update)
@@ -377,14 +378,14 @@ export async function companyCreate({request, env}) {
     let rows;
     if (existing[0]) {
       rows = Object.keys(extra).length
-        ? await supabaseFetch(env, `companies?id=eq.${existing[0].id}&select=id,name,industry,archetype,country,created_at`, {
+        ? await supabaseFetch(env, `companies?id=eq.${existing[0].id}&select=${COMPANY_SELECT}`, {
             method: 'PATCH',
             headers: {prefer: 'return=representation'},
             body: JSON.stringify(extra)
           })
-        : await supabaseFetch(env, `companies?id=eq.${existing[0].id}&select=id,name,industry,archetype,country,created_at`);
+        : await supabaseFetch(env, `companies?id=eq.${existing[0].id}&select=${COMPANY_SELECT}`);
     } else {
-      rows = await supabaseFetch(env, 'companies?select=id,name,industry,archetype,country,created_at', {
+      rows = await supabaseFetch(env, `companies?select=${COMPANY_SELECT}`, {
         method: 'POST',
         headers: {prefer: 'return=representation'},
         body: JSON.stringify({name, ...extra})
