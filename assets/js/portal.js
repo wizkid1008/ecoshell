@@ -906,6 +906,7 @@
         '</div>' +
         '<p class="portal-note" id="newOppExistingNote" hidden>Existing contact — company and name filled in from their profile.</p>' +
         '<div class="field"><label for="newOppStage">Starting stage</label><select id="newOppStage">' + stageOptions(defaultStage || 'new_inquiry') + '</select></div>' +
+        '<div class="field"><label for="newOppNote">Notes</label><textarea id="newOppNote" placeholder="Background on how this came about — admin only, never shown to the client"></textarea></div>' +
         companyDatalistHtml() + contactDatalistHtml(),
       onMount: function(modalEl){
         wireContactAutofill('newOppContactEmail', 'newOppContactName', 'newOppCompany', 'newOppExistingNote');
@@ -928,9 +929,14 @@
           status: document.getElementById('newOppStage').value
         }).then(function(result){
           if(!result.ok){ done(false, result.body.error || 'Could not add opportunity.'); return; }
-          done(true);
-          loadAdminDashboard(state.sessionToken);
-          openOpportunity(result.body.project.id);
+          var note = document.getElementById('newOppNote').value.trim();
+          var projectId = result.body.project.id;
+          var afterCreate = note ? patchJSON('/api/admin/projects', {id: projectId, internal_note: note}) : Promise.resolve();
+          afterCreate.then(function(){
+            done(true);
+            loadAdminDashboard(state.sessionToken);
+            openOpportunity(projectId);
+          });
         });
       }
     });
