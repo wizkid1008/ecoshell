@@ -319,6 +319,82 @@ export async function companyUpdate({request, env}) {
 const CLIENT_FIELDS = 'id,email,name,role,status,company_name,job_title,phone,country,industry,archetype,linkedin_url,created_at';
 const CLIENT_STATUSES = ['lead', 'contact', 'client'];
 
+export async function companyCreate({request, env}) {
+  const auth = await requireAdmin(request, env);
+  if (auth.error) return auth.error;
+
+  const payload = await request.json();
+  const name = cleanString(payload.name);
+  if (!name) return json({error: 'Company name is required.'}, {status: 400});
+
+  const extra = pick(payload, ['industry', 'archetype', 'country']);
+
+  try {
+    const existing = await supabaseFetch(env, `companies?name=ilike.${encodeURIComponent(name)}&select=id`);
+    let rows;
+    if (existing[0]) {
+      rows = Object.keys(extra).length
+        ? await supabaseFetch(env, `companies?id=eq.${existing[0].id}&select=id,name,industry,archetype,country,created_at`, {
+            method: 'PATCH',
+            headers: {prefer: 'return=representation'},
+            body: JSON.stringify(extra)
+          })
+        : await supabaseFetch(env, `companies?id=eq.${existing[0].id}&select=id,name,industry,archetype,country,created_at`);
+    } else {
+      rows = await supabaseFetch(env, 'companies?select=id,name,industry,archetype,country,created_at', {
+        method: 'POST',
+        headers: {prefer: 'return=representation'},
+        body: JSON.stringify({name, ...extra})
+      });
+    }
+    return json({company: rows[0]});
+  } catch (error) {
+    return json({error: error.message}, {status: 500});
+  }
+}
+
+export async function contactCreate({request, env}) {
+  const auth = await requireAdmin(request, env);
+  if (auth.error) return auth.error;
+
+  const payload = await request.json();
+  const email = cleanString(payload.email).toLowerCase();
+  if (!email) return json({error: 'Email is required.'}, {status: 400});
+  if (payload.status !== undefined && !CLIENT_STATUSES.includes(payload.status)) {
+    return json({error: 'Invalid status.'}, {status: 400});
+  }
+
+  try {
+    const existing = await supabaseFetch(env, `users?email=eq.${encodeURIComponent(email)}&select=id`);
+    if (existing.length) return json({error: 'A contact with this email already exists.'}, {status: 400});
+
+    const companyName = cleanString(payload.company_name);
+    if (payload.country) {
+      const matches = await supabaseFetch(env, `countries?name=eq.${encodeURIComponent(payload.country)}&select=name`);
+      if (!matches.length) return json({error: 'Invalid country.'}, {status: 400});
+    }
+
+    const insert = {
+      email,
+      name: cleanString(payload.name) || null,
+      role: 'member',
+      status: payload.status || 'lead',
+      company_name: companyName || null,
+      company_id: companyName ? await findOrCreateCompany(env, companyName) : null,
+      ...pick(payload, ['job_title', 'phone', 'country', 'industry', 'archetype', 'linkedin_url'])
+    };
+
+    const rows = await supabaseFetch(env, `users?select=${CLIENT_FIELDS}`, {
+      method: 'POST',
+      headers: {prefer: 'return=representation'},
+      body: JSON.stringify(insert)
+    });
+    return json({client: rows[0]});
+  } catch (error) {
+    return json({error: error.message}, {status: 500});
+  }
+}
+
 export async function clientUpdate({request, env}) {
   const auth = await requireAdmin(request, env);
   if (auth.error) return auth.error;

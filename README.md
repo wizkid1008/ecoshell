@@ -135,7 +135,11 @@ Backend files:
   routes) a sample, pilot, pilot result, proposal, contract or document
   against an opportunity, plus a company's own record and a client's
   profile on their behalf (`PATCH /api/admin/companies`,
-  `PATCH /api/admin/clients`). Requires `role: admin`.
+  `PATCH /api/admin/clients`). Also lets an admin create a bare contact or
+  company directly (`POST /api/admin/contacts`, `POST /api/admin/companies`)
+  from the Contacts page, without going through an opportunity or enquiry
+  first — `POST /api/admin/companies` finds-or-updates by name rather than
+  duplicating an existing one. Requires `role: admin`.
 - `src/api/profile.js` returns/updates the signed-in user's own profile
   (name, phone, country; members also get company name, job title, industry,
   archetype and LinkedIn profile URL). Saving a company name finds-or-creates

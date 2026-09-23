@@ -24,7 +24,9 @@ import {
   documentUpdate,
   noteUpdate,
   clientUpdateEdit,
+  companyCreate,
   companyUpdate,
+  contactCreate,
   clientUpdate
 } from './api/adminRecords.js';
 
@@ -48,7 +50,9 @@ const routes = [
   {method: 'PATCH', path: '/api/admin/documents', handler: documentUpdate},
   {method: 'PATCH', path: '/api/admin/notes', handler: noteUpdate},
   {method: 'PATCH', path: '/api/admin/updates', handler: clientUpdateEdit},
+  {method: 'POST', path: '/api/admin/companies', handler: companyCreate},
   {method: 'PATCH', path: '/api/admin/companies', handler: companyUpdate},
+  {method: 'POST', path: '/api/admin/contacts', handler: contactCreate},
   {method: 'PATCH', path: '/api/admin/clients', handler: clientUpdate},
   {method: 'POST', path: '/api/login', handler: login},
   {method: 'GET', path: '/api/client/projects', handler: clientProjects},

@@ -620,11 +620,21 @@
         breakdownTable('By industry', industryCounts) +
       '</div>' +
       '<article class="portal-card">' +
-        '<div class="card-head"><h3>Contacts</h3><input type="search" class="search-input" id="contactsSearch" placeholder="Search contacts..."></div>' +
+        '<div class="card-head"><h3>Contacts</h3>' +
+          '<div style="display:flex;gap:10px;align-items:center">' +
+            '<input type="search" class="search-input" id="contactsSearch" placeholder="Search contacts...">' +
+            '<button type="button" class="btn" id="addContactBtn">' + ICON_PLUS + 'Add contact</button>' +
+          '</div>' +
+        '</div>' +
         '<div id="contactsRowlist"></div>' +
       '</article>' +
       '<article class="portal-card">' +
-        '<div class="card-head"><h3>Companies</h3><input type="search" class="search-input" id="companiesSearch" placeholder="Search companies..."></div>' +
+        '<div class="card-head"><h3>Companies</h3>' +
+          '<div style="display:flex;gap:10px;align-items:center">' +
+            '<input type="search" class="search-input" id="companiesSearch" placeholder="Search companies...">' +
+            '<button type="button" class="btn" id="addCompanyBtn">' + ICON_PLUS + 'Add company</button>' +
+          '</div>' +
+        '</div>' +
         '<div id="companiesRowlist"></div>' +
       '</article>';
 
@@ -633,6 +643,87 @@
 
     document.getElementById('contactsSearch').addEventListener('input', function(event){ renderContacts(event.target.value); });
     document.getElementById('companiesSearch').addEventListener('input', function(event){ renderCompanies(event.target.value); });
+    document.getElementById('addContactBtn').addEventListener('click', openNewContactModal);
+    document.getElementById('addCompanyBtn').addEventListener('click', openNewCompanyModal);
+  }
+
+  function openNewContactModal(){
+    Promise.all([ensureCountries(), ensureLists()]).then(function(){
+      openModal({
+        title: 'New contact',
+        saveLabel: 'Add contact',
+        bodyHtml:
+          '<div class="frow">' +
+            '<div class="field"><label for="newContactName">Name</label><input id="newContactName" placeholder="Jordan Lee"></div>' +
+            '<div class="field"><label for="newContactEmail">Email</label><input id="newContactEmail" type="email" placeholder="jordan@acme.com"></div>' +
+          '</div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="newContactCompany">Company name</label><input id="newContactCompany" list="companyOptions" placeholder="Acme Packaging"></div>' +
+            '<div class="field"><label for="newContactJobTitle">Job title</label><input id="newContactJobTitle"></div>' +
+          '</div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="newContactPhone">Phone</label><input id="newContactPhone"></div>' +
+            '<div class="field"><label for="newContactCountry">Country</label><select id="newContactCountry">' + optionsHtml(countriesCache || [], '', 'Select a country') + '</select></div>' +
+          '</div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="newContactStatus">Status</label><select id="newContactStatus">' + CLIENT_STATUSES.map(function(v){ return '<option value="' + v + '"' + (v === 'lead' ? ' selected' : '') + '>' + esc(labelStatus(v)) + '</option>'; }).join('') + '</select></div>' +
+            '<div class="field"><label for="newContactIndustry">Industry</label><select id="newContactIndustry">' + optionsHtml(industriesCache || [], '', 'Select an industry') + '</select>' + addListLinkHtml('industries', 'newContactIndustry', 'industry') + '</div>' +
+          '</div>' +
+          '<div class="field"><label for="newContactArchetype">Archetype</label><select id="newContactArchetype">' + optionsHtml(archetypesCache || [], '', 'Select an archetype') + '</select>' + addListLinkHtml('archetypes', 'newContactArchetype', 'archetype') + '</div>' +
+          companyDatalistHtml(),
+        onMount: function(modalEl){ wireAddListLinks(modalEl); },
+        onSave: function(modalEl, done){
+          var email = document.getElementById('newContactEmail').value.trim();
+          if(!email){ done(false, 'Email is required.'); return; }
+          postJSON('/api/admin/contacts', {
+            email: email,
+            name: document.getElementById('newContactName').value,
+            company_name: document.getElementById('newContactCompany').value,
+            job_title: document.getElementById('newContactJobTitle').value,
+            phone: document.getElementById('newContactPhone').value,
+            country: document.getElementById('newContactCountry').value,
+            status: document.getElementById('newContactStatus').value,
+            industry: document.getElementById('newContactIndustry').value,
+            archetype: document.getElementById('newContactArchetype').value
+          }).then(function(result){
+            if(!result.ok){ done(false, result.body.error || 'Could not add contact.'); return; }
+            done(true);
+            loadAdminDashboard(state.sessionToken);
+          });
+        }
+      });
+    });
+  }
+
+  function openNewCompanyModal(){
+    Promise.all([ensureCountries(), ensureLists()]).then(function(){
+      openModal({
+        title: 'New company',
+        saveLabel: 'Add company',
+        bodyHtml:
+          '<div class="field"><label for="newCompanyName">Company name</label><input id="newCompanyName" placeholder="Acme Packaging"></div>' +
+          '<div class="frow">' +
+            '<div class="field"><label for="newCompanyIndustry">Industry</label><select id="newCompanyIndustry">' + optionsHtml(industriesCache || [], '', 'Select an industry') + '</select>' + addListLinkHtml('industries', 'newCompanyIndustry', 'industry') + '</div>' +
+            '<div class="field"><label for="newCompanyArchetype">Archetype</label><select id="newCompanyArchetype">' + optionsHtml(archetypesCache || [], '', 'Select an archetype') + '</select>' + addListLinkHtml('archetypes', 'newCompanyArchetype', 'archetype') + '</div>' +
+          '</div>' +
+          '<div class="field"><label for="newCompanyCountry">Country</label><select id="newCompanyCountry">' + optionsHtml(countriesCache || [], '', 'Select a country') + '</select></div>',
+        onMount: function(modalEl){ wireAddListLinks(modalEl); },
+        onSave: function(modalEl, done){
+          var name = document.getElementById('newCompanyName').value.trim();
+          if(!name){ done(false, 'Company name is required.'); return; }
+          postJSON('/api/admin/companies', {
+            name: name,
+            industry: document.getElementById('newCompanyIndustry').value,
+            archetype: document.getElementById('newCompanyArchetype').value,
+            country: document.getElementById('newCompanyCountry').value
+          }).then(function(result){
+            if(!result.ok){ done(false, result.body.error || 'Could not add company.'); return; }
+            done(true);
+            loadAdminDashboard(state.sessionToken);
+          });
+        }
+      });
+    });
   }
 
   // A client/company row leads straight into their opportunity's workflow
