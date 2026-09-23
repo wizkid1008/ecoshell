@@ -831,35 +831,40 @@
       '</article>';
     }
 
-    list.innerHTML = listCardHtml('industries', 'Industries') + listCardHtml('archetypes', 'Archetypes');
+    var cards = [
+      {table: 'industries', title: 'Industries'},
+      {table: 'archetypes', title: 'Archetypes'},
+      {table: 'polymers', title: 'Polymers'},
+      {table: 'processes', title: 'Processes'}
+    ];
+    list.innerHTML = cards.map(function(c){ return listCardHtml(c.table, c.title); }).join('');
 
-    function renderRows(table, id){
-      var values = (table === 'industries' ? industriesCache : archetypesCache) || [];
+    function renderRows(table){
+      var values = LIST_TABLES[table].get() || [];
       var rows = values.map(function(name){
         return rowItem({
           title: name,
           extraHtml: '<button type="button" class="icon-btn" data-delete-list="' + table + '" data-name="' + esc(name) + '" aria-label="Delete" title="Delete">' + ICON_TRASH + '</button>'
         });
       });
-      document.getElementById(id + 'Rowlist').innerHTML = rowlistHtml(rows, 'Nothing added yet.', false);
-      wireRows(table, id);
+      document.getElementById(table + 'Rowlist').innerHTML = rowlistHtml(rows, 'Nothing added yet.', false);
+      wireRows(table);
     }
 
-    function wireRows(table, id){
-      document.querySelectorAll('#' + id + 'Rowlist [data-delete-list]').forEach(function(btn){
+    function wireRows(table){
+      document.querySelectorAll('#' + table + 'Rowlist [data-delete-list]').forEach(function(btn){
         btn.addEventListener('click', function(){
           var name = btn.getAttribute('data-name');
           openModal({
             title: 'Remove "' + name + '"?',
             saveLabel: 'Remove',
-            bodyHtml: '<p class="portal-note">Existing contacts/companies already using this value keep it — this only removes it from the dropdown for new entries.</p>',
+            bodyHtml: '<p class="portal-note">Existing records already using this value keep it — this only removes it from the dropdown for new entries.</p>',
             onSave: function(modalEl, done){
               deleteJSON('/api/admin/' + table, {name: name}).then(function(result){
                 if(!result.ok){ done(false, result.body.error || 'Could not remove.'); return; }
-                if(table === 'industries') industriesCache = result.body.industries;
-                else archetypesCache = result.body.archetypes;
+                LIST_TABLES[table].set(result.body[table]);
                 done(true);
-                renderRows(table, id);
+                renderRows(table);
               });
             }
           });
@@ -867,26 +872,25 @@
       });
     }
 
-    function wireAdd(table, id){
-      document.getElementById(id + 'AddBtn').addEventListener('click', function(){
-        var input = document.getElementById(id + 'NewInput');
+    function wireAdd(table){
+      document.getElementById(table + 'AddBtn').addEventListener('click', function(){
+        var input = document.getElementById(table + 'NewInput');
         var name = input.value.trim();
         if(!name) return;
         postJSON('/api/admin/' + table, {name: name}).then(function(result){
           if(!result.ok) return;
-          if(table === 'industries') industriesCache = result.body.industries;
-          else archetypesCache = result.body.archetypes;
+          LIST_TABLES[table].set(result.body[table]);
           input.value = '';
-          renderRows(table, id);
+          renderRows(table);
         });
       });
     }
 
     ensureLists().then(function(){
-      renderRows('industries', 'industries');
-      renderRows('archetypes', 'archetypes');
-      wireAdd('industries', 'industries');
-      wireAdd('archetypes', 'archetypes');
+      cards.forEach(function(c){
+        renderRows(c.table);
+        wireAdd(c.table);
+      });
     });
   }
 
@@ -1252,29 +1256,31 @@
       var ownerOptions = '<option value="">Unassigned</option>' + admins.map(function(a){
         return '<option value="' + esc(a.id) + '"' + (project.owner && project.owner.email === a.email ? ' selected' : '') + '>' + esc(a.name || a.email) + '</option>';
       }).join('');
-      openModal({
-        title: 'Edit details',
-        saveLabel: 'Save',
-        bodyHtml:
-          '<div class="field"><label for="fOwner">Owner</label><select id="fOwner">' + ownerOptions + '</select></div>' +
-          '<div class="frow">' +
-            '<div class="field"><label for="fPolymer">Polymer</label><input id="fPolymer" value="' + esc(project.polymer || '') + '"></div>' +
-            '<div class="field"><label for="fProcess">Process</label><input id="fProcess" value="' + esc(project.process || '') + '"></div>' +
-          '</div>' +
-          '<div class="field"><label for="fTarget">Target</label><input id="fTarget" value="' + esc(project.target || '') + '"></div>',
-        onSave: function(modalEl, done){
-          patchJSON('/api/admin/projects', {
-            id: project.id,
-            owner_id: document.getElementById('fOwner').value || null,
-            polymer: document.getElementById('fPolymer').value,
-            process: document.getElementById('fProcess').value,
-            target: document.getElementById('fTarget').value
-          }).then(function(result){
-            if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
-            done(true);
-            reload();
-          });
-        }
+      ensureLists().then(function(){
+        openModal({
+          title: 'Edit details',
+          saveLabel: 'Save',
+          bodyHtml:
+            '<div class="field"><label for="fOwner">Owner</label><select id="fOwner">' + ownerOptions + '</select></div>' +
+            '<div class="frow">' +
+              '<div class="field"><label for="fPolymer">Polymer</label><select id="fPolymer">' + optionsHtml(polymersCache || [], project.polymer || '', 'Select a polymer') + '</select></div>' +
+              '<div class="field"><label for="fProcess">Process</label><select id="fProcess">' + optionsHtml(processesCache || [], project.process || '', 'Select a process') + '</select></div>' +
+            '</div>' +
+            '<div class="field"><label for="fTarget">Target</label><input id="fTarget" value="' + esc(project.target || '') + '"></div>',
+          onSave: function(modalEl, done){
+            patchJSON('/api/admin/projects', {
+              id: project.id,
+              owner_id: document.getElementById('fOwner').value || null,
+              polymer: document.getElementById('fPolymer').value,
+              process: document.getElementById('fProcess').value,
+              target: document.getElementById('fTarget').value
+            }).then(function(result){
+              if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
+              done(true);
+              reload();
+            });
+          }
+        });
       });
     });
 
@@ -1351,33 +1357,37 @@
 
   var industriesCache = null;
   var archetypesCache = null;
+  var polymersCache = null;
+  var processesCache = null;
+
+  // Every admin-editable lookup list (Workspace > Admin) shares this shape:
+  // an endpoint, a cache variable, and — for industries/archetypes only —
+  // a static Account-form select to append options onto the first time.
+  var LIST_TABLES = {
+    industries: {get: function(){ return industriesCache; }, set: function(v){ industriesCache = v; }, acctSelectId: 'acctIndustry'},
+    archetypes: {get: function(){ return archetypesCache; }, set: function(v){ archetypesCache = v; }, acctSelectId: 'acctArchetype'},
+    polymers: {get: function(){ return polymersCache; }, set: function(v){ polymersCache = v; }},
+    processes: {get: function(){ return processesCache; }, set: function(v){ processesCache = v; }}
+  };
 
   function ensureLists(){
-    var tasks = [];
-    if(!industriesCache){
-      tasks.push(fetch('/api/industries').then(function(res){ return res.json(); }).then(function(body){
-        industriesCache = body.industries || [];
-        var select = document.getElementById('acctIndustry');
-        industriesCache.forEach(function(name){
-          var option = document.createElement('option');
-          option.value = name;
-          option.textContent = name;
-          select.appendChild(option);
-        });
-      }).catch(function(){ industriesCache = []; }));
-    }
-    if(!archetypesCache){
-      tasks.push(fetch('/api/archetypes').then(function(res){ return res.json(); }).then(function(body){
-        archetypesCache = body.archetypes || [];
-        var select = document.getElementById('acctArchetype');
-        archetypesCache.forEach(function(name){
-          var option = document.createElement('option');
-          option.value = name;
-          option.textContent = name;
-          select.appendChild(option);
-        });
-      }).catch(function(){ archetypesCache = []; }));
-    }
+    var tasks = Object.keys(LIST_TABLES).map(function(table){
+      var entry = LIST_TABLES[table];
+      if(entry.get()) return Promise.resolve();
+      return fetch('/api/' + table).then(function(res){ return res.json(); }).then(function(body){
+        var values = body[table] || [];
+        entry.set(values);
+        var select = entry.acctSelectId && document.getElementById(entry.acctSelectId);
+        if(select){
+          values.forEach(function(name){
+            var option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            select.appendChild(option);
+          });
+        }
+      }).catch(function(){ entry.set([]); });
+    });
     return Promise.all(tasks);
   }
 

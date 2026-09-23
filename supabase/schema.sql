@@ -184,6 +184,14 @@ create table if not exists archetypes (
   name text primary key
 );
 
+create table if not exists polymers (
+  name text primary key
+);
+
+create table if not exists processes (
+  name text primary key
+);
+
 create table if not exists login_tokens (
   id uuid primary key default gen_random_uuid(),
   email text not null,
@@ -226,6 +234,8 @@ alter table login_tokens enable row level security;
 alter table countries enable row level security;
 alter table industries enable row level security;
 alter table archetypes enable row level security;
+alter table polymers enable row level security;
+alter table processes enable row level security;
 
 drop policy if exists "service role manages companies" on companies;
 drop policy if exists "service role manages enquiries" on enquiries;
@@ -243,6 +253,8 @@ drop policy if exists "service role manages login tokens" on login_tokens;
 drop policy if exists "service role manages countries" on countries;
 drop policy if exists "service role manages industries" on industries;
 drop policy if exists "service role manages archetypes" on archetypes;
+drop policy if exists "service role manages polymers" on polymers;
+drop policy if exists "service role manages processes" on processes;
 
 create policy "service role manages companies" on companies
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
@@ -290,6 +302,12 @@ create policy "service role manages industries" on industries
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
 create policy "service role manages archetypes" on archetypes
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+create policy "service role manages polymers" on polymers
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+create policy "service role manages processes" on processes
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
 -- Seed the country list used by the Account profile's Country dropdown
@@ -351,6 +369,19 @@ values
   ('Mid Market'), ('Specialty compounder')
 on conflict (name) do nothing;
 
+-- Seed the Polymer/Process lists used by an opportunity's detail view --
+-- admins can add more from the Workspace > Admin page.
+insert into polymers (name)
+values
+  ('PP'), ('PE'), ('PET'), ('PVC'), ('PS'), ('ABS'), ('Nylon (PA)'), ('PLA'), ('TPU'), ('PC')
+on conflict (name) do nothing;
+
+insert into processes (name)
+values
+  ('Injection moulding'), ('Blow moulding'), ('Extrusion'), ('Thermoforming'),
+  ('Compression moulding'), ('Rotational moulding'), ('Film / sheet extrusion'), ('3D printing')
+on conflict (name) do nothing;
+
 -- Removed as an admin -- delete outright rather than leaving a stray row
 -- (on conflict do nothing below won't remove an existing row on its own).
 delete from users where email = 'kyle.a.newell@gmail.com';
@@ -398,3 +429,24 @@ on conflict (name) do nothing;
 -- "Large Retailer" is renamed to "Retailer" -- carry existing rows over.
 update users set archetype = 'Retailer' where archetype = 'Large Retailer';
 update companies set archetype = 'Retailer' where archetype = 'Large Retailer';
+
+create table if not exists polymers (name text primary key);
+create table if not exists processes (name text primary key);
+alter table polymers enable row level security;
+alter table processes enable row level security;
+drop policy if exists "service role manages polymers" on polymers;
+drop policy if exists "service role manages processes" on processes;
+create policy "service role manages polymers" on polymers
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+create policy "service role manages processes" on processes
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+insert into polymers (name)
+values ('PP'), ('PE'), ('PET'), ('PVC'), ('PS'), ('ABS'), ('Nylon (PA)'), ('PLA'), ('TPU'), ('PC')
+on conflict (name) do nothing;
+
+insert into processes (name)
+values
+  ('Injection moulding'), ('Blow moulding'), ('Extrusion'), ('Thermoforming'),
+  ('Compression moulding'), ('Rotational moulding'), ('Film / sheet extrusion'), ('3D printing')
+on conflict (name) do nothing;

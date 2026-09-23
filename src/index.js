@@ -6,7 +6,10 @@ import {login} from './api/login.js';
 import {clientProjects} from './api/clientProjects.js';
 import {profileGet, profileUpdate} from './api/profile.js';
 import {countriesList} from './api/countries.js';
-import {industriesList, archetypesList, industryCreate, archetypeCreate, industryDelete, archetypeDelete} from './api/lists.js';
+import {
+  industriesList, archetypesList, industryCreate, archetypeCreate, industryDelete, archetypeDelete,
+  polymersList, processesList, polymerCreate, processCreate, polymerDelete, processDelete
+} from './api/lists.js';
 import {opportunityDetail} from './api/adminOpportunity.js';
 import {
   opportunityCreate,
@@ -64,7 +67,13 @@ const routes = [
   {method: 'POST', path: '/api/admin/industries', handler: industryCreate},
   {method: 'POST', path: '/api/admin/archetypes', handler: archetypeCreate},
   {method: 'DELETE', path: '/api/admin/industries', handler: industryDelete},
-  {method: 'DELETE', path: '/api/admin/archetypes', handler: archetypeDelete}
+  {method: 'DELETE', path: '/api/admin/archetypes', handler: archetypeDelete},
+  {method: 'GET', path: '/api/polymers', handler: polymersList},
+  {method: 'GET', path: '/api/processes', handler: processesList},
+  {method: 'POST', path: '/api/admin/polymers', handler: polymerCreate},
+  {method: 'POST', path: '/api/admin/processes', handler: processCreate},
+  {method: 'DELETE', path: '/api/admin/polymers', handler: polymerDelete},
+  {method: 'DELETE', path: '/api/admin/processes', handler: processDelete}
 ];
 
 export default {

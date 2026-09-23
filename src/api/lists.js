@@ -66,3 +66,10 @@ export const industryCreate = makeListCreate('industries');
 export const archetypeCreate = makeListCreate('archetypes');
 export const industryDelete = makeListDelete('industries');
 export const archetypeDelete = makeListDelete('archetypes');
+
+export const polymersList = makeListGet('polymers');
+export const processesList = makeListGet('processes');
+export const polymerCreate = makeListCreate('polymers');
+export const processCreate = makeListCreate('processes');
+export const polymerDelete = makeListDelete('polymers');
+export const processDelete = makeListDelete('processes');

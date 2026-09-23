@@ -147,12 +147,13 @@ Backend files:
   table.
 - `src/api/countries.js` returns the full `countries` table (public, no
   session required) — used to populate the Account form's Country dropdown.
-- `src/api/lists.js` returns the `industries`/`archetypes` tables (public
-  GET, same pattern as countries) and lets an admin add or remove a value
-  (`POST`/`DELETE /api/admin/industries`, same for `/archetypes`) — used by
-  the Account form and the admin contact/company editors (validated against
-  these tables, not a hardcoded list) and by the Admin page under Workspace
-  in the sidebar, which is the dedicated place to manage both lists.
+- `src/api/lists.js` returns the `industries`/`archetypes`/`polymers`/
+  `processes` tables (public GET, same pattern as countries) and lets an
+  admin add or remove a value from any of them (`POST`/`DELETE
+  /api/admin/<table>`) — industries/archetypes back the Account form and
+  admin contact/company editors, polymers/processes back the Polymer/
+  Process selects on an opportunity's Edit details popup. The Admin page
+  under Workspace in the sidebar is the dedicated place to manage all four.
 - `src/lib/supabase.js` shared Supabase REST helpers.
 - `src/lib/password.js` PBKDF2 password hashing/verification.
 - `src/lib/auth.js` resolves a session token to its `users` row (id, email,
