@@ -50,6 +50,15 @@ export function cleanString(value) {
   return String(value || '').trim();
 }
 
+// PostgREST treats comma, period, colon and parentheses as reserved syntax
+// inside a filter value (e.g. eq./ilike.) even after URL-encoding -- a
+// company name like "ALDI, Inc." breaks an unquoted `ilike.` lookup.
+// Wrapping the value in escaped double quotes tells PostgREST to take it
+// literally. Safe to apply to any value, not just ones with special chars.
+export function pgQuote(value) {
+  return '"' + String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+}
+
 export function generateToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');

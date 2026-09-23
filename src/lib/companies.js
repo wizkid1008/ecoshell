@@ -1,4 +1,4 @@
-import {supabaseFetch} from './supabase.js';
+import {pgQuote, supabaseFetch} from './supabase.js';
 
 // Companies aren't deduped by a unique constraint (names can legitimately
 // collide across regions), so this matches case-insensitively on name and
@@ -7,7 +7,7 @@ export async function findOrCreateCompany(env, name, extra = {}) {
   const trimmed = String(name || '').trim();
   if (!trimmed) return null;
 
-  const existing = await supabaseFetch(env, `companies?name=ilike.${encodeURIComponent(trimmed)}&select=id&limit=1`);
+  const existing = await supabaseFetch(env, `companies?name=ilike.${encodeURIComponent(pgQuote(trimmed))}&select=id&limit=1`);
   if (existing[0]) return existing[0].id;
 
   const inserted = await supabaseFetch(env, 'companies?select=id', {

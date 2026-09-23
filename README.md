@@ -174,7 +174,10 @@ Backend files:
 - `src/lib/auth.js` resolves a session token to its `users` row (id, email,
   role, status, company_id).
 - `src/lib/companies.js` finds a company by name (case-insensitive) or
-  creates it.
+  creates it. Uses `pgQuote` (see `src/lib/supabase.js`) so a name with a
+  comma or period — e.g. "ALDI, Inc." — doesn't break the `ilike` lookup;
+  PostgREST treats those characters as filter syntax unless the value
+  itself is quoted, separately from URL-encoding.
 - `src/lib/pipeline.js` the fixed list of pipeline stage slugs.
 - `src/lib/storage.js` uploads a document to the private `documents` bucket
   in Supabase Storage and signs a short-lived (1 hour) URL for one on read

@@ -151,6 +151,7 @@
   }
 
   var CLIENT_STATUSES = ['lead', 'contact', 'client'];
+  var activeClientsTab = 'contacts';
 
   function optionsHtml(values, selected, placeholder){
     return '<option value="">' + placeholder + '</option>' + values.map(function(v){
@@ -601,21 +602,35 @@
       wireCompanyRows();
     }
 
-    list.innerHTML =
-      '<div class="breakdown-grid">' +
-        breakdownTable('By archetype', archetypeCounts) +
-        breakdownTable('By industry', industryCounts) +
-      '</div>' +
-      '<article class="portal-card">' +
-        '<div class="card-head"><h3>Contacts</h3>' +
-          '<div style="display:flex;gap:10px;align-items:center">' +
-            '<input type="search" class="search-input" id="contactsSearch" placeholder="Search contacts...">' +
-            '<button type="button" class="btn" id="addContactBtn">' + ICON_PLUS + 'Add contact</button>' +
-          '</div>' +
+    var TABS = [
+      {id: 'contacts', title: 'Contacts'},
+      {id: 'companies', title: 'Companies'}
+    ];
+
+    function tabsHtml(){
+      return '<div class="tabs">' + TABS.map(function(t){
+        return '<button type="button" class="tabs__item' + (t.id === activeClientsTab ? ' is-active' : '') + '" data-clients-tab="' + t.id + '">' + esc(t.title) + '</button>';
+      }).join('') + '</div>';
+    }
+
+    function contactsPanelHtml(){
+      return '<div class="breakdown-grid">' +
+          breakdownTable('By archetype', archetypeCounts) +
+          breakdownTable('By industry', industryCounts) +
         '</div>' +
-        '<div id="contactsRowlist"></div>' +
-      '</article>' +
-      '<article class="portal-card">' +
+        '<article class="portal-card">' +
+          '<div class="card-head"><h3>Contacts</h3>' +
+            '<div style="display:flex;gap:10px;align-items:center">' +
+              '<input type="search" class="search-input" id="contactsSearch" placeholder="Search contacts...">' +
+              '<button type="button" class="btn" id="addContactBtn">' + ICON_PLUS + 'Add contact</button>' +
+            '</div>' +
+          '</div>' +
+          '<div id="contactsRowlist"></div>' +
+        '</article>';
+    }
+
+    function companiesPanelHtml(){
+      return '<article class="portal-card">' +
         '<div class="card-head"><h3>Companies</h3>' +
           '<div style="display:flex;gap:10px;align-items:center">' +
             '<input type="search" class="search-input" id="companiesSearch" placeholder="Search companies...">' +
@@ -625,15 +640,31 @@
         '</div>' +
         '<div id="companiesRowlist"></div>' +
       '</article>';
+    }
 
-    renderContacts('');
-    renderCompanies('');
+    function renderPanel(){
+      list.innerHTML = tabsHtml() + (activeClientsTab === 'contacts' ? contactsPanelHtml() : companiesPanelHtml());
 
-    document.getElementById('contactsSearch').addEventListener('input', function(event){ renderContacts(event.target.value); });
-    document.getElementById('companiesSearch').addEventListener('input', function(event){ renderCompanies(event.target.value); });
-    document.getElementById('addContactBtn').addEventListener('click', openNewContactModal);
-    document.getElementById('addCompanyBtn').addEventListener('click', openNewCompanyModal);
-    document.getElementById('importCompaniesBtn').addEventListener('click', openCompaniesImportModal);
+      list.querySelectorAll('[data-clients-tab]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          activeClientsTab = btn.getAttribute('data-clients-tab');
+          renderPanel();
+        });
+      });
+
+      if(activeClientsTab === 'contacts'){
+        renderContacts('');
+        document.getElementById('contactsSearch').addEventListener('input', function(event){ renderContacts(event.target.value); });
+        document.getElementById('addContactBtn').addEventListener('click', openNewContactModal);
+      } else {
+        renderCompanies('');
+        document.getElementById('companiesSearch').addEventListener('input', function(event){ renderCompanies(event.target.value); });
+        document.getElementById('addCompanyBtn').addEventListener('click', openNewCompanyModal);
+        document.getElementById('importCompaniesBtn').addEventListener('click', openCompaniesImportModal);
+      }
+    }
+
+    renderPanel();
   }
 
   function openNewContactModal(){
@@ -847,9 +878,17 @@
                 totals.companiesUpdated + ' updated, ' + totals.contactsCreated + ' contact' + (totals.contactsCreated === 1 ? '' : 's') + ' added' +
                 (totals.contactsSkipped ? ', ' + totals.contactsSkipped + ' contact(s) already existed' : '') +
                 (totals.errors.length ? ', ' + totals.errors.length + ' row(s) had errors' : '') + '.';
-              done(true);
               loadAdminDashboard(state.sessionToken);
-              window.alert(summary);
+              // Show the actual error text instead of just a count, and
+              // keep the modal open (close via the X) so it's readable —
+              // an alert() would truncate/lose it as soon as it's dismissed.
+              var errorListHtml = totals.errors.length
+                ? '<div class="rowlist-scroll" style="max-height:240px"><div class="rowlist">' +
+                    totals.errors.map(function(e){ return '<div class="rowlist__item"><div class="rowlist__main"><p class="rowlist__sub">' + esc(e) + '</p></div></div>'; }).join('') +
+                  '</div></div>'
+                : '';
+              document.getElementById('modalBody').innerHTML = '<p class="portal-note">' + esc(summary) + '</p>' + errorListHtml;
+              if(footStatus) footStatus.textContent = 'Done — close this window when you\'re ready.';
               return;
             }
             var batch = rows.slice(index, index + BATCH_SIZE);
