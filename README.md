@@ -98,12 +98,15 @@ stepper replaces the stage list in the sidebar while you're in it, with any
 other opportunities for that company listed below it). Every record section
 (samples, pilot + results, proposal, contract, documents, client-visible
 updates, internal notes) is a compact row list with a "+" to add one and a
-click-to-edit popup, not a permanently open form. The Contacts tab lists
-every contact (`role: member`) and every company, each searchable by name/
-email, with a status pill, opportunity count, and By-archetype /
-By-industry breakdown counts; clicking a row goes to that contact's or
-company's opportunity workflow (falling back to a profile-edit popup, via
-the row's pencil icon, if they have none yet).
+click-to-edit popup, not a permanently open form. The Contacts and
+Companies tab has one sortable, Excel-style table for each — click a
+column header to sort by it (click again to flip direction), each
+searchable by name/email. Companies shows Archetype/Industry/Country/
+Active opportunity (computed live from whether any project references
+that company, not stored) with the By-archetype/By-industry breakdown
+above it; clicking a row goes to that contact's or company's opportunity
+workflow (falling back to a profile-edit popup, via the row's pencil
+icon, if they have none yet).
 
 **Client workflow**: sign in → see every opportunity for your company (not
 just ones you personally started) — stage, sample/pilot progress, proposal

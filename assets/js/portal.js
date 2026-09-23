@@ -152,6 +152,8 @@
 
   var CLIENT_STATUSES = ['lead', 'contact', 'client'];
   var activeClientsTab = 'contacts';
+  var contactsSort = {key: 'name', dir: 'asc'};
+  var companiesSort = {key: 'name', dir: 'asc'};
 
   function optionsHtml(values, selected, placeholder){
     return '<option value="">' + placeholder + '</option>' + values.map(function(v){
@@ -487,6 +489,53 @@
     '</div>';
   }
 
+  // A sortable, Excel-style table: click a column header to sort by it
+  // (click again to flip direction). `columns` is [{key, label}]; `rows` is
+  // [{cells: {key: displayValue}, dataAttrs, actionsHtml}]. `sortState` is
+  // {key, dir} — the caller owns it so the choice persists across re-renders.
+  function dataTableHtml(columns, rows, emptyText, sortState){
+    var headHtml = columns.map(function(col){
+      var isSorted = sortState.key === col.key;
+      var arrow = isSorted ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+      return '<th data-sort-col="' + col.key + '"' + (isSorted ? ' class="is-sorted"' : '') + '>' + esc(col.label) + arrow + '</th>';
+    }).join('') + '<th></th>';
+
+    var bodyHtml = rows.length
+      ? rows.map(function(row){
+          var cellsHtml = columns.map(function(col){ return '<td>' + esc(row.cells[col.key] || '') + '</td>'; }).join('');
+          return '<tr class="is-clickable"' + (row.dataAttrs || '') + '>' + cellsHtml + '<td class="data-table__actions">' + (row.actionsHtml || '') + '</td></tr>';
+        }).join('')
+      : '<tr><td class="data-table__empty" colspan="' + (columns.length + 1) + '">' + esc(emptyText) + '</td></tr>';
+
+    return '<div class="rowlist-scroll"><table class="data-table"><thead><tr>' + headHtml + '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div>';
+  }
+
+  function sortRows(rows, sortState, getters){
+    var getter = getters[sortState.key] || getters[Object.keys(getters)[0]];
+    return rows.slice().sort(function(a, b){
+      var av = getter(a);
+      var bv = getter(b);
+      if(av == null) av = '';
+      if(bv == null) bv = '';
+      if(typeof av === 'string') av = av.toLowerCase();
+      if(typeof bv === 'string') bv = bv.toLowerCase();
+      if(av < bv) return sortState.dir === 'asc' ? -1 : 1;
+      if(av > bv) return sortState.dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  function wireSortHeaders(container, sortState, onChange){
+    container.querySelectorAll('[data-sort-col]').forEach(function(th){
+      th.addEventListener('click', function(){
+        var key = th.getAttribute('data-sort-col');
+        if(sortState.key === key){ sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc'; }
+        else { sortState.key = key; sortState.dir = 'asc'; }
+        onChange();
+      });
+    });
+  }
+
   function countBy(items, key){
     var counts = {};
     items.forEach(function(item){
@@ -523,10 +572,6 @@
       return '<button type="button" class="icon-btn" data-' + attr + '="' + esc(id) + '" aria-label="Edit profile" title="Edit profile">' + ICON_PENCIL + '</button>';
     };
 
-    function oppCountLabel(n){
-      return n ? n + ' opportunit' + (n === 1 ? 'y' : 'ies') : 'No opportunities yet';
-    }
-
     var oppCountByEmail = {};
     var oppCountByCompany = {};
     (data.projects || []).forEach(function(p){
@@ -534,23 +579,41 @@
       if(p.companies && p.companies.name) oppCountByCompany[p.companies.name] = (oppCountByCompany[p.companies.name] || 0) + 1;
     });
 
-    function contactRowHtml(item){
-      var details = [item.company_name, item.job_title, item.industry, oppCountLabel(oppCountByEmail[item.email])].filter(Boolean).join(' · ');
-      return rowItem({
-        title: item.name || item.email, sub: details, status: item.status || 'lead',
-        clickable: true, extraHtml: editIcon('edit-client', item.id),
-        dataAttrs: ' data-go-client="' + esc(item.id) + '"'
-      });
+    var CONTACT_COLUMNS = [
+      {key: 'name', label: 'Name'},
+      {key: 'email', label: 'Email'},
+      {key: 'company_name', label: 'Company'},
+      {key: 'job_title', label: 'Job title'},
+      {key: 'status', label: 'Status'},
+      {key: 'active', label: 'Active opportunity'}
+    ];
+    var COMPANY_COLUMNS = [
+      {key: 'name', label: 'Company'},
+      {key: 'archetype', label: 'Archetype'},
+      {key: 'industry', label: 'Industry'},
+      {key: 'country', label: 'Country'},
+      {key: 'active', label: 'Active opportunity'}
+    ];
+
+    function contactRow(item){
+      var active = (oppCountByEmail[item.email] || 0) > 0;
+      return {
+        cells: {
+          name: item.name || item.email, email: item.email, company_name: item.company_name,
+          job_title: item.job_title, status: labelStatus(item.status || 'lead'), active: active ? 'Yes' : 'No'
+        },
+        dataAttrs: ' data-go-client="' + esc(item.id) + '"',
+        actionsHtml: editIcon('edit-client', item.id) + '<span class="icon-btn" aria-hidden="true">' + ICON_CHEVRON + '</span>'
+      };
     }
 
-    function companyRowHtml(item){
-      var activeOpportunity = (oppCountByCompany[item.name] || 0) > 0 ? 'Yes' : 'No';
-      var details = [item.archetype, item.industry, 'Active opportunity: ' + activeOpportunity].filter(Boolean).join(' · ');
-      return rowItem({
-        title: item.name, sub: details, clickable: true,
-        extraHtml: editIcon('edit-company', item.id),
-        dataAttrs: ' data-go-company="' + esc(item.id) + '"'
-      });
+    function companyRow(item){
+      var active = (oppCountByCompany[item.name] || 0) > 0;
+      return {
+        cells: {name: item.name, archetype: item.archetype, industry: item.industry, country: item.country, active: active ? 'Yes' : 'No'},
+        dataAttrs: ' data-go-company="' + esc(item.id) + '"',
+        actionsHtml: editIcon('edit-company', item.id) + '<span class="icon-btn" aria-hidden="true">' + ICON_CHEVRON + '</span>'
+      };
     }
 
     function matchesQuery(text, q){
@@ -558,10 +621,10 @@
     }
 
     function wireContactRows(){
-      document.querySelectorAll('#contactsRowlist [data-edit-client]').forEach(function(el){
+      document.querySelectorAll('#contactsTable [data-edit-client]').forEach(function(el){
         el.addEventListener('click', function(event){ event.stopPropagation(); openClientModal(el.getAttribute('data-edit-client')); });
       });
-      document.querySelectorAll('#contactsRowlist [data-go-client]').forEach(function(el){
+      document.querySelectorAll('#contactsTable [data-go-client]').forEach(function(el){
         el.addEventListener('click', function(event){
           if(event.target.closest('[data-edit-client]')) return;
           var client = clients.find(function(c){ return String(c.id) === el.getAttribute('data-go-client'); });
@@ -573,10 +636,10 @@
     }
 
     function wireCompanyRows(){
-      document.querySelectorAll('#companiesRowlist [data-edit-company]').forEach(function(el){
+      document.querySelectorAll('#companiesTable [data-edit-company]').forEach(function(el){
         el.addEventListener('click', function(event){ event.stopPropagation(); openCompanyModal(el.getAttribute('data-edit-company')); });
       });
-      document.querySelectorAll('#companiesRowlist [data-go-company]').forEach(function(el){
+      document.querySelectorAll('#companiesTable [data-go-company]').forEach(function(el){
         el.addEventListener('click', function(event){
           if(event.target.closest('[data-edit-company]')) return;
           var company = companies.find(function(c){ return String(c.id) === el.getAttribute('data-go-company'); });
@@ -587,19 +650,38 @@
       });
     }
 
+    var contactsQuery = '';
+    var companiesQuery = '';
+
     function renderContacts(query){
-      var q = query.trim().toLowerCase();
+      if(query !== undefined) contactsQuery = query;
+      var q = contactsQuery.trim().toLowerCase();
       var filtered = !q ? clients : clients.filter(function(item){
         return matchesQuery(item.name, q) || matchesQuery(item.email, q) || matchesQuery(item.company_name, q);
       });
-      document.getElementById('contactsRowlist').innerHTML = rowlistHtml(filtered.map(contactRowHtml), q ? 'No contacts match that search.' : 'No contacts yet.', true);
+      var sorted = sortRows(filtered, contactsSort, {
+        name: function(c){ return c.name || c.email; }, email: function(c){ return c.email; },
+        company_name: function(c){ return c.company_name; }, job_title: function(c){ return c.job_title; },
+        status: function(c){ return c.status; }, active: function(c){ return (oppCountByEmail[c.email] || 0) > 0 ? 1 : 0; }
+      });
+      var container = document.getElementById('contactsTable');
+      container.innerHTML = dataTableHtml(CONTACT_COLUMNS, sorted.map(contactRow), q ? 'No contacts match that search.' : 'No contacts yet.', contactsSort);
+      wireSortHeaders(container, contactsSort, function(){ renderContacts(); });
       wireContactRows();
     }
 
     function renderCompanies(query){
-      var q = query.trim().toLowerCase();
+      if(query !== undefined) companiesQuery = query;
+      var q = companiesQuery.trim().toLowerCase();
       var filtered = !q ? companies : companies.filter(function(item){ return matchesQuery(item.name, q); });
-      document.getElementById('companiesRowlist').innerHTML = rowlistHtml(filtered.map(companyRowHtml), q ? 'No companies match that search.' : 'No companies yet.', true);
+      var sorted = sortRows(filtered, companiesSort, {
+        name: function(c){ return c.name; }, archetype: function(c){ return c.archetype; },
+        industry: function(c){ return c.industry; }, country: function(c){ return c.country; },
+        active: function(c){ return (oppCountByCompany[c.name] || 0) > 0 ? 1 : 0; }
+      });
+      var container = document.getElementById('companiesTable');
+      container.innerHTML = dataTableHtml(COMPANY_COLUMNS, sorted.map(companyRow), q ? 'No companies match that search.' : 'No companies yet.', companiesSort);
+      wireSortHeaders(container, companiesSort, function(){ renderCompanies(); });
       wireCompanyRows();
     }
 
@@ -622,7 +704,7 @@
               '<button type="button" class="btn" id="addContactBtn">' + ICON_PLUS + 'Add contact</button>' +
             '</div>' +
           '</div>' +
-          '<div id="contactsRowlist" class="rowlist-scroll"></div>' +
+          '<div id="contactsTable"></div>' +
         '</article>';
     }
 
@@ -639,7 +721,7 @@
             '<button type="button" class="btn" id="addCompanyBtn">' + ICON_PLUS + 'Add company</button>' +
           '</div>' +
         '</div>' +
-        '<div id="companiesRowlist" class="rowlist-scroll"></div>' +
+        '<div id="companiesTable"></div>' +
       '</article>';
     }
 
