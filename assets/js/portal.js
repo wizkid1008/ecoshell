@@ -510,8 +510,8 @@
     heading.textContent = 'Contacts and Companies';
     var clients = data.clients || [];
     var companies = data.companies || [];
-    var archetypeCounts = countBy(clients, 'archetype');
-    var industryCounts = countBy(clients, 'industry');
+    var archetypeCounts = countBy(companies, 'archetype');
+    var industryCounts = countBy(companies, 'industry');
 
     kpis.hidden = false;
     kpis.innerHTML = [
@@ -614,23 +614,23 @@
     }
 
     function contactsPanelHtml(){
-      return '<div class="breakdown-grid">' +
-          breakdownTable('By archetype', archetypeCounts) +
-          breakdownTable('By industry', industryCounts) +
-        '</div>' +
-        '<article class="portal-card">' +
+      return '<article class="portal-card">' +
           '<div class="card-head"><h3>Contacts</h3>' +
             '<div style="display:flex;gap:10px;align-items:center">' +
               '<input type="search" class="search-input" id="contactsSearch" placeholder="Search contacts...">' +
               '<button type="button" class="btn" id="addContactBtn">' + ICON_PLUS + 'Add contact</button>' +
             '</div>' +
           '</div>' +
-          '<div id="contactsRowlist"></div>' +
+          '<div id="contactsRowlist" class="rowlist-scroll"></div>' +
         '</article>';
     }
 
     function companiesPanelHtml(){
-      return '<article class="portal-card">' +
+      return '<div class="breakdown-grid">' +
+          breakdownTable('By archetype', archetypeCounts) +
+          breakdownTable('By industry', industryCounts) +
+        '</div>' +
+        '<article class="portal-card">' +
         '<div class="card-head"><h3>Companies</h3>' +
           '<div style="display:flex;gap:10px;align-items:center">' +
             '<input type="search" class="search-input" id="companiesSearch" placeholder="Search companies...">' +
@@ -638,7 +638,7 @@
             '<button type="button" class="btn" id="addCompanyBtn">' + ICON_PLUS + 'Add company</button>' +
           '</div>' +
         '</div>' +
-        '<div id="companiesRowlist"></div>' +
+        '<div id="companiesRowlist" class="rowlist-scroll"></div>' +
       '</article>';
     }
 
