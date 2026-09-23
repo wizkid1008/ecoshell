@@ -145,7 +145,7 @@
       '<p class="app-nav__label">Closed</p>' +
       closed.map(function(pair){ return stageNavItem(pair, counts[pair[0]] || 0); }).join('') +
       '<p class="app-nav__label">Workspace</p>' +
-      navItem('clients', ICON_CLIENTS, 'Contacts') +
+      navItem('clients', ICON_CLIENTS, 'Contacts and Companies') +
       navItem('lists', ICON_ADMIN, 'Admin') +
       navItem('account', ICON_ACCOUNT, 'Account');
   }
@@ -507,7 +507,7 @@
   }
 
   function renderClientsView(data){
-    heading.textContent = 'Contacts';
+    heading.textContent = 'Contacts and Companies';
     var clients = data.clients || [];
     var companies = data.companies || [];
     var archetypeCounts = countBy(clients, 'archetype');
