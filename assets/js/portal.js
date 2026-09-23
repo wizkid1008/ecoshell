@@ -653,17 +653,8 @@
     heading.textContent = stageLabel;
 
     var stageProjects = data.projects.filter(function(item){ return item.status === stage; });
-    var stageRefCodes = stageProjects.map(function(p){ return p.reference_code; });
-    function countFor(arr){
-      return (arr || []).filter(function(r){ return stageRefCodes.indexOf(r.projects && r.projects.reference_code) !== -1; }).length;
-    }
     kpis.hidden = false;
-    kpis.innerHTML = [
-      '<article><b>' + stageProjects.length + '</b><span>Opportunities</span></article>',
-      '<article><b>' + countFor(data.samples) + '</b><span>Samples</span></article>',
-      '<article><b>' + countFor(data.pilots) + '</b><span>Pilots</span></article>',
-      '<article><b>' + countFor(data.proposals) + '</b><span>Proposals</span></article>'
-    ].join('');
+    kpis.innerHTML = '<article><b>' + stageProjects.length + '</b><span>Opportunities</span></article>';
 
     var projectRows = stageProjects.map(function(item){
       var sub = (item.companies?.name || 'Company') + ' · Owner: ' + (item.owner ? (item.owner.name || item.owner.email) : 'Unassigned') +
