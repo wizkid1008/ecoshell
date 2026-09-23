@@ -665,7 +665,7 @@
 
     var stageProjects = data.projects.filter(function(item){ return item.status === stage; });
     kpis.hidden = false;
-    kpis.innerHTML = '<article><b>' + stageProjects.length + '</b><span>Opportunities</span></article>';
+    kpis.innerHTML = '<article><b>' + stageProjects.length + '</b><span>' + esc(stageLabel) + '</span></article>';
 
     var projectRows = stageProjects.map(function(item){
       var sub = (item.companies?.name || 'Company') + ' · Owner: ' + (item.owner ? (item.owner.name || item.owner.email) : 'Unassigned') +
