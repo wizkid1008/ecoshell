@@ -6,6 +6,7 @@ import {login} from './api/login.js';
 import {clientProjects} from './api/clientProjects.js';
 import {profileGet, profileUpdate} from './api/profile.js';
 import {countriesList} from './api/countries.js';
+import {industriesList, archetypesList, industryCreate, archetypeCreate} from './api/lists.js';
 import {opportunityDetail} from './api/adminOpportunity.js';
 import {
   opportunityCreate,
@@ -53,7 +54,11 @@ const routes = [
   {method: 'GET', path: '/api/client/projects', handler: clientProjects},
   {method: 'GET', path: '/api/profile', handler: profileGet},
   {method: 'PATCH', path: '/api/profile', handler: profileUpdate},
-  {method: 'GET', path: '/api/countries', handler: countriesList}
+  {method: 'GET', path: '/api/countries', handler: countriesList},
+  {method: 'GET', path: '/api/industries', handler: industriesList},
+  {method: 'GET', path: '/api/archetypes', handler: archetypesList},
+  {method: 'POST', path: '/api/admin/industries', handler: industryCreate},
+  {method: 'POST', path: '/api/admin/archetypes', handler: archetypeCreate}
 ];
 
 export default {

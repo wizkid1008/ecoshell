@@ -176,6 +176,14 @@ create table if not exists countries (
   name text primary key
 );
 
+create table if not exists industries (
+  name text primary key
+);
+
+create table if not exists archetypes (
+  name text primary key
+);
+
 create table if not exists login_tokens (
   id uuid primary key default gen_random_uuid(),
   email text not null,
@@ -216,6 +224,8 @@ alter table internal_notes enable row level security;
 alter table users enable row level security;
 alter table login_tokens enable row level security;
 alter table countries enable row level security;
+alter table industries enable row level security;
+alter table archetypes enable row level security;
 
 drop policy if exists "service role manages companies" on companies;
 drop policy if exists "service role manages enquiries" on enquiries;
@@ -231,6 +241,8 @@ drop policy if exists "service role manages internal notes" on internal_notes;
 drop policy if exists "service role manages users" on users;
 drop policy if exists "service role manages login tokens" on login_tokens;
 drop policy if exists "service role manages countries" on countries;
+drop policy if exists "service role manages industries" on industries;
+drop policy if exists "service role manages archetypes" on archetypes;
 
 create policy "service role manages companies" on companies
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
@@ -272,6 +284,12 @@ create policy "service role manages login tokens" on login_tokens
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
 create policy "service role manages countries" on countries
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+create policy "service role manages industries" on industries
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+create policy "service role manages archetypes" on archetypes
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
 -- Seed the country list used by the Account profile's Country dropdown
@@ -318,6 +336,21 @@ values
   ('Venezuela'), ('Vietnam'), ('Yemen'), ('Zambia'), ('Zimbabwe')
 on conflict (name) do nothing;
 
+-- Seed the industry/archetype lists used by the Account profile and the
+-- admin contact editor -- admins can add more from either of those, via
+-- POST /api/admin/industries and /api/admin/archetypes.
+insert into industries (name)
+values
+  ('Beauty'), ('Fashion'), ('Food and Agri'), ('Health & Life Sciences'), ('Tech'), ('Toys')
+on conflict (name) do nothing;
+
+insert into archetypes (name)
+values
+  ('Converter'), ('Distributors'), ('Ecoshell Branded'), ('Ecosystem Player'), ('Emerging Brand'),
+  ('Large Brands'), ('Retailer'), ('Material Manufacturer'), ('Manufacturer Supplier'),
+  ('Mid Market'), ('Specialty compounder')
+on conflict (name) do nothing;
+
 -- Removed as an admin -- delete outright rather than leaving a stray row
 -- (on conflict do nothing below won't remove an existing row on its own).
 delete from users where email = 'kyle.a.newell@gmail.com';
@@ -339,3 +372,29 @@ on conflict (email) do nothing;
 -- Already included in the create table above for fresh installs.
 alter table projects add column if not exists stage_changed_at timestamptz not null default now();
 alter table users add column if not exists linkedin_url text;
+
+create table if not exists industries (name text primary key);
+create table if not exists archetypes (name text primary key);
+alter table industries enable row level security;
+alter table archetypes enable row level security;
+drop policy if exists "service role manages industries" on industries;
+drop policy if exists "service role manages archetypes" on archetypes;
+create policy "service role manages industries" on industries
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+create policy "service role manages archetypes" on archetypes
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+insert into industries (name)
+values ('Beauty'), ('Fashion'), ('Food and Agri'), ('Health & Life Sciences'), ('Tech'), ('Toys')
+on conflict (name) do nothing;
+
+insert into archetypes (name)
+values
+  ('Converter'), ('Distributors'), ('Ecoshell Branded'), ('Ecosystem Player'), ('Emerging Brand'),
+  ('Large Brands'), ('Retailer'), ('Material Manufacturer'), ('Manufacturer Supplier'),
+  ('Mid Market'), ('Specialty compounder')
+on conflict (name) do nothing;
+
+-- "Large Retailer" is renamed to "Retailer" -- carry existing rows over.
+update users set archetype = 'Retailer' where archetype = 'Large Retailer';
+update companies set archetype = 'Retailer' where archetype = 'Large Retailer';

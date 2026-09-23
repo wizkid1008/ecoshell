@@ -147,18 +147,45 @@
       navItem('account', ICON_ACCOUNT, 'Account');
   }
 
-  var INDUSTRIES = ['Beauty', 'Fashion', 'Food and Agri', 'Health & Life Sciences', 'Tech', 'Toys'];
-  var ARCHETYPES = [
-    'Converter', 'Distributors', 'Ecoshell Branded', 'Ecosystem Player', 'Emerging Brand',
-    'Large Brands', 'Large Retailer', 'Material Manufacturer', 'Manufacturer Supplier',
-    'Mid Market', 'Specialty compounder'
-  ];
   var CLIENT_STATUSES = ['lead', 'contact', 'client'];
 
   function optionsHtml(values, selected, placeholder){
     return '<option value="">' + placeholder + '</option>' + values.map(function(v){
       return '<option value="' + esc(v) + '"' + (v === selected ? ' selected' : '') + '>' + esc(v) + '</option>';
     }).join('');
+  }
+
+  // Add-new-value link shown under an admin Industry/Archetype select. Uses
+  // a plain prompt() rather than a nested modal (only one modal can be open
+  // at a time) to keep this a one-step action from inside the edit popup.
+  function addListLinkHtml(table, targetId, label){
+    return '<button type="button" class="portal-ref" style="background:none;border:0;cursor:pointer;padding:2px 0" data-add-list="' + table + '" data-target="' + targetId + '">+ Add new ' + esc(label) + '</button>';
+  }
+
+  // Backs the "Company name" fields with a native datalist of existing
+  // companies, so typing links to the same company record instead of
+  // silently creating a near-duplicate on a typo or slightly different name.
+  function companyDatalistHtml(){
+    var companies = (state.data || adminDemo).companies || [];
+    return '<datalist id="companyOptions">' + companies.map(function(c){ return '<option value="' + esc(c.name) + '">'; }).join('') + '</datalist>';
+  }
+
+  function wireAddListLinks(root){
+    root.querySelectorAll('[data-add-list]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var table = btn.getAttribute('data-add-list');
+        var label = table === 'industries' ? 'industry' : 'archetype';
+        var name = window.prompt('Add a new ' + label + ':');
+        if(!name || !name.trim()) return;
+        postJSON('/api/admin/' + table, {name: name.trim()}).then(function(result){
+          if(!result.ok){ window.alert(result.body.error || 'Could not add ' + label + '.'); return; }
+          if(table === 'industries') industriesCache = result.body.industries;
+          else archetypesCache = result.body.archetypes;
+          var select = document.getElementById(btn.getAttribute('data-target'));
+          if(select) select.innerHTML = optionsHtml(table === 'industries' ? industriesCache : archetypesCache, name.trim(), 'Select an ' + label);
+        });
+      });
+    });
   }
 
   var clientDemo = {
@@ -612,7 +639,7 @@
     var client = (data.clients || []).find(function(c){ return String(c.id) === id; });
     if(!client) return;
 
-    ensureCountries().then(function(){
+    Promise.all([ensureCountries(), ensureLists()]).then(function(){
       openModal({
         title: client.name || client.email,
         saveLabel: 'Save client',
@@ -622,7 +649,7 @@
             '<div class="field"><label for="clientEditStatus">Status</label><select id="clientEditStatus">' + CLIENT_STATUSES.map(function(v){ return '<option value="' + v + '"' + (v === (client.status || 'lead') ? ' selected' : '') + '>' + esc(labelStatus(v)) + '</option>'; }).join('') + '</select></div>' +
           '</div>' +
           '<div class="frow">' +
-            '<div class="field"><label for="clientEditCompanyName">Company name</label><input id="clientEditCompanyName" value="' + esc(client.company_name || '') + '"></div>' +
+            '<div class="field"><label for="clientEditCompanyName">Company name</label><input id="clientEditCompanyName" list="companyOptions" value="' + esc(client.company_name || '') + '"></div>' +
             '<div class="field"><label for="clientEditJobTitle">Job title</label><input id="clientEditJobTitle" value="' + esc(client.job_title || '') + '"></div>' +
           '</div>' +
           '<div class="frow">' +
@@ -630,11 +657,13 @@
             '<div class="field"><label for="clientEditCountry">Country</label><select id="clientEditCountry">' + optionsHtml(countriesCache || [], client.country || '', 'Select a country') + '</select></div>' +
           '</div>' +
           '<div class="frow">' +
-            '<div class="field"><label for="clientEditIndustry">Industry</label><select id="clientEditIndustry">' + optionsHtml(INDUSTRIES, client.industry || '', 'Select an industry') + '</select></div>' +
-            '<div class="field"><label for="clientEditArchetype">Archetype</label><select id="clientEditArchetype">' + optionsHtml(ARCHETYPES, client.archetype || '', 'Select an archetype') + '</select></div>' +
+            '<div class="field"><label for="clientEditIndustry">Industry</label><select id="clientEditIndustry">' + optionsHtml(industriesCache || [], client.industry || '', 'Select an industry') + '</select>' + addListLinkHtml('industries', 'clientEditIndustry', 'industry') + '</div>' +
+            '<div class="field"><label for="clientEditArchetype">Archetype</label><select id="clientEditArchetype">' + optionsHtml(archetypesCache || [], client.archetype || '', 'Select an archetype') + '</select>' + addListLinkHtml('archetypes', 'clientEditArchetype', 'archetype') + '</div>' +
           '</div>' +
           '<p class="eyebrow" style="margin-top:6px">LinkedIn</p>' +
-          '<div class="field"><label for="clientEditLinkedin">Profile URL</label><input id="clientEditLinkedin" type="url" placeholder="https://linkedin.com/in/..." value="' + esc(client.linkedin_url || '') + '"></div>',
+          '<div class="field"><label for="clientEditLinkedin">Profile URL</label><input id="clientEditLinkedin" type="url" placeholder="https://linkedin.com/in/..." value="' + esc(client.linkedin_url || '') + '"></div>' +
+          companyDatalistHtml(),
+        onMount: function(modalEl){ wireAddListLinks(modalEl); },
         onSave: function(modalEl, done){
           patchJSON('/api/admin/clients', {
             id: client.id,
@@ -662,17 +691,18 @@
     var company = (data.companies || []).find(function(c){ return String(c.id) === id; });
     if(!company) return;
 
-    ensureCountries().then(function(){
+    Promise.all([ensureCountries(), ensureLists()]).then(function(){
       openModal({
         title: company.name,
         saveLabel: 'Save company',
         bodyHtml:
           '<div class="field"><label for="companyEditName">Company name</label><input id="companyEditName" value="' + esc(company.name || '') + '"></div>' +
           '<div class="frow">' +
-            '<div class="field"><label for="companyEditIndustry">Industry</label><select id="companyEditIndustry">' + optionsHtml(INDUSTRIES, company.industry || '', 'Select an industry') + '</select></div>' +
-            '<div class="field"><label for="companyEditArchetype">Archetype</label><select id="companyEditArchetype">' + optionsHtml(ARCHETYPES, company.archetype || '', 'Select an archetype') + '</select></div>' +
+            '<div class="field"><label for="companyEditIndustry">Industry</label><select id="companyEditIndustry">' + optionsHtml(industriesCache || [], company.industry || '', 'Select an industry') + '</select>' + addListLinkHtml('industries', 'companyEditIndustry', 'industry') + '</div>' +
+            '<div class="field"><label for="companyEditArchetype">Archetype</label><select id="companyEditArchetype">' + optionsHtml(archetypesCache || [], company.archetype || '', 'Select an archetype') + '</select>' + addListLinkHtml('archetypes', 'companyEditArchetype', 'archetype') + '</div>' +
           '</div>' +
           '<div class="field"><label for="companyEditCountry">Country</label><select id="companyEditCountry">' + optionsHtml(countriesCache || [], company.country || '', 'Select a country') + '</select></div>',
+        onMount: function(modalEl){ wireAddListLinks(modalEl); },
         onSave: function(modalEl, done){
           patchJSON('/api/admin/companies', {
             id: company.id,
@@ -697,14 +727,15 @@
       bodyHtml:
         '<p class="portal-note">For leads that didn\'t come through the website contact form — a trade show contact, a referral, a cold outreach target.</p>' +
         '<div class="frow">' +
-          '<div class="field"><label for="newOppCompany">Company name</label><input id="newOppCompany" placeholder="Acme Packaging"></div>' +
+          '<div class="field"><label for="newOppCompany">Company name</label><input id="newOppCompany" list="companyOptions" placeholder="Acme Packaging"></div>' +
           '<div class="field"><label for="newOppName">Opportunity name</label><input id="newOppName" placeholder="Closure review for Acme Packaging"></div>' +
         '</div>' +
         '<div class="frow">' +
           '<div class="field"><label for="newOppContactName">Contact name</label><input id="newOppContactName" placeholder="Jordan Lee"></div>' +
           '<div class="field"><label for="newOppContactEmail">Contact email</label><input id="newOppContactEmail" type="email" placeholder="jordan@acme.com"></div>' +
         '</div>' +
-        '<div class="field"><label for="newOppStage">Starting stage</label><select id="newOppStage">' + stageOptions(defaultStage || 'new_inquiry') + '</select></div>',
+        '<div class="field"><label for="newOppStage">Starting stage</label><select id="newOppStage">' + stageOptions(defaultStage || 'new_inquiry') + '</select></div>' +
+        companyDatalistHtml(),
       onSave: function(modalEl, done){
         var companyName = document.getElementById('newOppCompany').value.trim();
         var oppName = document.getElementById('newOppName').value.trim();
@@ -1135,18 +1166,51 @@
       .catch(function(){ return []; });
   }
 
+  var industriesCache = null;
+  var archetypesCache = null;
+
+  function ensureLists(){
+    var tasks = [];
+    if(!industriesCache){
+      tasks.push(fetch('/api/industries').then(function(res){ return res.json(); }).then(function(body){
+        industriesCache = body.industries || [];
+        var select = document.getElementById('acctIndustry');
+        industriesCache.forEach(function(name){
+          var option = document.createElement('option');
+          option.value = name;
+          option.textContent = name;
+          select.appendChild(option);
+        });
+      }).catch(function(){ industriesCache = []; }));
+    }
+    if(!archetypesCache){
+      tasks.push(fetch('/api/archetypes').then(function(res){ return res.json(); }).then(function(body){
+        archetypesCache = body.archetypes || [];
+        var select = document.getElementById('acctArchetype');
+        archetypesCache.forEach(function(name){
+          var option = document.createElement('option');
+          option.value = name;
+          option.textContent = name;
+          select.appendChild(option);
+        });
+      }).catch(function(){ archetypesCache = []; }));
+    }
+    return Promise.all(tasks);
+  }
+
   function loadAccountForm(){
     setAccountStatus('Loading account...', false);
     accountForm.acctEmailInput = document.getElementById('acctEmail');
 
     Promise.all([
       ensureCountries(),
+      ensureLists(),
       fetch('/api/profile', {headers: {'x-session': state.sessionToken}}).then(function(res){
         return res.json().then(function(body){ return {ok: res.ok, body: body}; });
       })
     ])
       .then(function(results){
-        var result = results[1];
+        var result = results[2];
         if(!result.ok){
           setAccountStatus(result.body.error || 'Could not load account.', true);
           return;
