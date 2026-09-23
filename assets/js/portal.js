@@ -158,13 +158,6 @@
     }).join('');
   }
 
-  // Add-new-value link shown under an admin Industry/Archetype select. Uses
-  // a plain prompt() rather than a nested modal (only one modal can be open
-  // at a time) to keep this a one-step action from inside the edit popup.
-  function addListLinkHtml(table, targetId, label){
-    return '<button type="button" class="portal-ref" style="background:none;border:0;cursor:pointer;padding:2px 0" data-add-list="' + table + '" data-target="' + targetId + '">+ Add new ' + esc(label) + '</button>';
-  }
-
   // Backs the "Company name" fields with a native datalist of existing
   // companies, so typing links to the same company record instead of
   // silently creating a near-duplicate on a typo or slightly different name.
@@ -194,24 +187,6 @@
       var companyField = document.getElementById(companyFieldId);
       if(nameField && match.name) nameField.value = match.name;
       if(companyField && match.company_name) companyField.value = match.company_name;
-    });
-  }
-
-  function wireAddListLinks(root){
-    root.querySelectorAll('[data-add-list]').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var table = btn.getAttribute('data-add-list');
-        var label = table === 'industries' ? 'industry' : 'archetype';
-        var name = window.prompt('Add a new ' + label + ':');
-        if(!name || !name.trim()) return;
-        postJSON('/api/admin/' + table, {name: name.trim()}).then(function(result){
-          if(!result.ok){ window.alert(result.body.error || 'Could not add ' + label + '.'); return; }
-          if(table === 'industries') industriesCache = result.body.industries;
-          else archetypesCache = result.body.archetypes;
-          var select = document.getElementById(btn.getAttribute('data-target'));
-          if(select) select.innerHTML = optionsHtml(table === 'industries' ? industriesCache : archetypesCache, name.trim(), 'Select an ' + label);
-        });
-      });
     });
   }
 
@@ -667,11 +642,10 @@
           '</div>' +
           '<div class="frow">' +
             '<div class="field"><label for="newContactStatus">Status</label><select id="newContactStatus">' + CLIENT_STATUSES.map(function(v){ return '<option value="' + v + '"' + (v === 'lead' ? ' selected' : '') + '>' + esc(labelStatus(v)) + '</option>'; }).join('') + '</select></div>' +
-            '<div class="field"><label for="newContactIndustry">Industry</label><select id="newContactIndustry">' + optionsHtml(industriesCache || [], '', 'Select an industry') + '</select>' + addListLinkHtml('industries', 'newContactIndustry', 'industry') + '</div>' +
+            '<div class="field"><label for="newContactIndustry">Industry</label><select id="newContactIndustry">' + optionsHtml(industriesCache || [], '', 'Select an industry') + '</select></div>' +
           '</div>' +
-          '<div class="field"><label for="newContactArchetype">Archetype</label><select id="newContactArchetype">' + optionsHtml(archetypesCache || [], '', 'Select an archetype') + '</select>' + addListLinkHtml('archetypes', 'newContactArchetype', 'archetype') + '</div>' +
+          '<div class="field"><label for="newContactArchetype">Archetype</label><select id="newContactArchetype">' + optionsHtml(archetypesCache || [], '', 'Select an archetype') + '</select></div>' +
           companyDatalistHtml(),
-        onMount: function(modalEl){ wireAddListLinks(modalEl); },
         onSave: function(modalEl, done){
           var email = document.getElementById('newContactEmail').value.trim();
           if(!email){ done(false, 'Email is required.'); return; }
@@ -703,11 +677,10 @@
         bodyHtml:
           '<div class="field"><label for="newCompanyName">Company name</label><input id="newCompanyName" placeholder="Acme Packaging"></div>' +
           '<div class="frow">' +
-            '<div class="field"><label for="newCompanyIndustry">Industry</label><select id="newCompanyIndustry">' + optionsHtml(industriesCache || [], '', 'Select an industry') + '</select>' + addListLinkHtml('industries', 'newCompanyIndustry', 'industry') + '</div>' +
-            '<div class="field"><label for="newCompanyArchetype">Archetype</label><select id="newCompanyArchetype">' + optionsHtml(archetypesCache || [], '', 'Select an archetype') + '</select>' + addListLinkHtml('archetypes', 'newCompanyArchetype', 'archetype') + '</div>' +
+            '<div class="field"><label for="newCompanyIndustry">Industry</label><select id="newCompanyIndustry">' + optionsHtml(industriesCache || [], '', 'Select an industry') + '</select></div>' +
+            '<div class="field"><label for="newCompanyArchetype">Archetype</label><select id="newCompanyArchetype">' + optionsHtml(archetypesCache || [], '', 'Select an archetype') + '</select></div>' +
           '</div>' +
           '<div class="field"><label for="newCompanyCountry">Country</label><select id="newCompanyCountry">' + optionsHtml(countriesCache || [], '', 'Select a country') + '</select></div>',
-        onMount: function(modalEl){ wireAddListLinks(modalEl); },
         onSave: function(modalEl, done){
           var name = document.getElementById('newCompanyName').value.trim();
           if(!name){ done(false, 'Company name is required.'); return; }
@@ -779,13 +752,12 @@
             '<div class="field"><label for="clientEditCountry">Country</label><select id="clientEditCountry">' + optionsHtml(countriesCache || [], client.country || '', 'Select a country') + '</select></div>' +
           '</div>' +
           '<div class="frow">' +
-            '<div class="field"><label for="clientEditIndustry">Industry</label><select id="clientEditIndustry">' + optionsHtml(industriesCache || [], client.industry || '', 'Select an industry') + '</select>' + addListLinkHtml('industries', 'clientEditIndustry', 'industry') + '</div>' +
-            '<div class="field"><label for="clientEditArchetype">Archetype</label><select id="clientEditArchetype">' + optionsHtml(archetypesCache || [], client.archetype || '', 'Select an archetype') + '</select>' + addListLinkHtml('archetypes', 'clientEditArchetype', 'archetype') + '</div>' +
+            '<div class="field"><label for="clientEditIndustry">Industry</label><select id="clientEditIndustry">' + optionsHtml(industriesCache || [], client.industry || '', 'Select an industry') + '</select></div>' +
+            '<div class="field"><label for="clientEditArchetype">Archetype</label><select id="clientEditArchetype">' + optionsHtml(archetypesCache || [], client.archetype || '', 'Select an archetype') + '</select></div>' +
           '</div>' +
           '<p class="eyebrow" style="margin-top:6px">LinkedIn</p>' +
           '<div class="field"><label for="clientEditLinkedin">Profile URL</label><input id="clientEditLinkedin" type="url" placeholder="https://linkedin.com/in/..." value="' + esc(client.linkedin_url || '') + '"></div>' +
           companyDatalistHtml(),
-        onMount: function(modalEl){ wireAddListLinks(modalEl); },
         onSave: function(modalEl, done){
           patchJSON('/api/admin/clients', {
             id: client.id,
@@ -820,11 +792,10 @@
         bodyHtml:
           '<div class="field"><label for="companyEditName">Company name</label><input id="companyEditName" value="' + esc(company.name || '') + '"></div>' +
           '<div class="frow">' +
-            '<div class="field"><label for="companyEditIndustry">Industry</label><select id="companyEditIndustry">' + optionsHtml(industriesCache || [], company.industry || '', 'Select an industry') + '</select>' + addListLinkHtml('industries', 'companyEditIndustry', 'industry') + '</div>' +
-            '<div class="field"><label for="companyEditArchetype">Archetype</label><select id="companyEditArchetype">' + optionsHtml(archetypesCache || [], company.archetype || '', 'Select an archetype') + '</select>' + addListLinkHtml('archetypes', 'companyEditArchetype', 'archetype') + '</div>' +
+            '<div class="field"><label for="companyEditIndustry">Industry</label><select id="companyEditIndustry">' + optionsHtml(industriesCache || [], company.industry || '', 'Select an industry') + '</select></div>' +
+            '<div class="field"><label for="companyEditArchetype">Archetype</label><select id="companyEditArchetype">' + optionsHtml(archetypesCache || [], company.archetype || '', 'Select an archetype') + '</select></div>' +
           '</div>' +
           '<div class="field"><label for="companyEditCountry">Country</label><select id="companyEditCountry">' + optionsHtml(countriesCache || [], company.country || '', 'Select a country') + '</select></div>',
-        onMount: function(modalEl){ wireAddListLinks(modalEl); },
         onSave: function(modalEl, done){
           patchJSON('/api/admin/companies', {
             id: company.id,
