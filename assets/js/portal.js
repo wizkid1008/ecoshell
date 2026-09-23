@@ -1144,22 +1144,27 @@
         row: function(r){ return {title: r.title, sub: [labelStatus(r.visibility), r.document_type].filter(Boolean).join(' · ')}; },
         fieldsHtml: function(r){
           r = r || {};
-          return '<div class="frow">' +
-            '<div class="field"><label for="fTitle">Title</label><input id="fTitle" value="' + esc(r.title || '') + '"></div>' +
-            '<div class="field"><label for="fUrl">URL</label><input id="fUrl" value="' + esc(r.url || '') + '"></div>' +
-          '</div>' +
+          var uploadHtml = r.id ? '' : (
+            '<div class="field"><label for="fFile">Upload a file</label><input type="file" id="fFile"></div>' +
+            '<p class="portal-note">Or paste a link below instead of uploading.</p>'
+          );
+          return '<div class="field"><label for="fTitle">Title</label><input id="fTitle" value="' + esc(r.title || '') + '"></div>' +
+          uploadHtml +
           '<div class="frow">' +
+            '<div class="field"><label for="fUrl">URL</label><input id="fUrl" value="' + esc(r.storage_path ? '' : (r.url || '')) + '"' + (r.storage_path ? ' placeholder="Uploaded file — leave blank to keep it, or paste a link to replace it"' : '') + '></div>' +
             '<div class="field"><label for="fType">Type</label><input id="fType" placeholder="e.g. spec sheet" value="' + esc(r.document_type || '') + '"></div>' +
-            '<div class="field"><label for="fVisibility">Visibility</label><select id="fVisibility"><option value="client"' + (r.visibility !== 'internal' ? ' selected' : '') + '>Client-visible</option><option value="internal"' + (r.visibility === 'internal' ? ' selected' : '') + '>Internal only</option></select></div>' +
-          '</div>';
+          '</div>' +
+          '<div class="field"><label for="fVisibility">Visibility</label><select id="fVisibility"><option value="client"' + (r.visibility !== 'internal' ? ' selected' : '') + '>Client-visible</option><option value="internal"' + (r.visibility === 'internal' ? ' selected' : '') + '>Internal only</option></select></div>';
         },
         payload: function(){
-          return {
+          var out = {
             title: document.getElementById('fTitle').value,
-            url: document.getElementById('fUrl').value,
             document_type: document.getElementById('fType').value,
             visibility: document.getElementById('fVisibility').value
           };
+          var urlValue = document.getElementById('fUrl').value.trim();
+          if(urlValue) out.url = urlValue;
+          return out;
         }
       },
       clientUpdate: {
@@ -1194,6 +1199,27 @@
         saveLabel: record ? 'Save' : cfg.createLabel,
         bodyHtml: cfg.fieldsHtml(record),
         onSave: function(modalEl, done){
+          if(type === 'document' && !record){
+            var fileInput = document.getElementById('fFile');
+            var file = fileInput && fileInput.files[0];
+            if(file){
+              var form = new FormData();
+              form.append('project_id', project.id);
+              form.append('title', document.getElementById('fTitle').value);
+              form.append('document_type', document.getElementById('fType').value);
+              form.append('visibility', document.getElementById('fVisibility').value);
+              form.append('file', file);
+              fetch('/api/admin/documents/upload', {method: 'POST', headers: {'x-session': state.sessionToken}, body: form})
+                .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
+                .then(function(result){
+                  if(!result.ok){ done(false, result.body.error || 'Could not upload.'); return; }
+                  done(true);
+                  reload();
+                });
+              return;
+            }
+          }
+
           var url = record ? cfg.updateUrl : cfg.createUrl;
           var body = record ? Object.assign({id: record.id}, cfg.payload()) : Object.assign({project_id: project.id}, cfg.payload());
           var request = record ? patchJSON(url, body) : postJSON(url, body);

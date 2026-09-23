@@ -139,7 +139,9 @@ Backend files:
   company directly (`POST /api/admin/contacts`, `POST /api/admin/companies`)
   from the Contacts page, without going through an opportunity or enquiry
   first — `POST /api/admin/companies` finds-or-updates by name rather than
-  duplicating an existing one. Requires `role: admin`.
+  duplicating an existing one. `POST /api/admin/documents/upload` uploads a
+  file straight into Supabase Storage instead of linking one already hosted
+  elsewhere — see `src/lib/storage.js`. Requires `role: admin`.
 - `src/api/profile.js` returns/updates the signed-in user's own profile
   (name, phone, country; members also get company name, job title, industry,
   archetype and LinkedIn profile URL). Saving a company name finds-or-creates
@@ -161,6 +163,12 @@ Backend files:
 - `src/lib/companies.js` finds a company by name (case-insensitive) or
   creates it.
 - `src/lib/pipeline.js` the fixed list of pipeline stage slugs.
+- `src/lib/storage.js` uploads a document to the private `documents` bucket
+  in Supabase Storage and signs a short-lived (1 hour) URL for one on read
+  — `project_documents.storage_path` marks an uploaded file, `.url` a
+  linked one; `adminOpportunity.js` and `clientProjects.js` both sign
+  uploaded documents' URLs fresh on every request rather than storing a
+  permanent one, so an internal-only upload stays private.
 - `supabase/schema.sql` defines every table, RLS policy and seed (including
   a one-time `drop table` cleanup of the old split admin/client tables) and
   seeds admin users (password unset until each one's first sign-in). A

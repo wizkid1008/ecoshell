@@ -2,6 +2,7 @@ import {cleanString, json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 import {resolveSession} from '../lib/auth.js';
 import {findOrCreateCompany} from '../lib/companies.js';
 import {isValidStage} from '../lib/pipeline.js';
+import {uploadDocumentFile, withSignedUrl} from '../lib/storage.js';
 
 async function requireAdmin(request, env) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']);
@@ -215,6 +216,42 @@ export async function documentCreate({request, env}) {
       })
     });
     return json({document: rows[0]});
+  } catch (error) {
+    return json({error: error.message}, {status: 500});
+  }
+}
+
+export async function documentUpload({request, env}) {
+  const auth = await requireAdmin(request, env);
+  if (auth.error) return auth.error;
+
+  const form = await request.formData();
+  const projectId = cleanString(form.get('project_id'));
+  const title = cleanString(form.get('title'));
+  const documentType = cleanString(form.get('document_type')) || null;
+  const visibility = form.get('visibility') === 'internal' ? 'internal' : 'client';
+  const file = form.get('file');
+
+  if (!projectId || !title || !(file && typeof file.arrayBuffer === 'function')) {
+    return json({error: 'project_id, title and a file are required.'}, {status: 400});
+  }
+
+  try {
+    const path = `${projectId}/${Date.now()}-${file.name}`;
+    await uploadDocumentFile(env, path, file);
+
+    const rows = await supabaseFetch(env, 'project_documents?select=id,title,url,storage_path,document_type,visibility,created_at', {
+      method: 'POST',
+      headers: {prefer: 'return=representation'},
+      body: JSON.stringify({
+        project_id: projectId,
+        title,
+        storage_path: path,
+        document_type: documentType,
+        visibility
+      })
+    });
+    return json({document: await withSignedUrl(env, rows[0])});
   } catch (error) {
     return json({error: error.message}, {status: 500});
   }

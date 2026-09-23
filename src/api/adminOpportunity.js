@@ -1,5 +1,6 @@
 import {cleanString, json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 import {resolveSession} from '../lib/auth.js';
+import {withSignedUrls} from '../lib/storage.js';
 
 export async function opportunityDetail({request, env}) {
   const envError = requireEnv(env, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']);
@@ -18,7 +19,7 @@ export async function opportunityDetail({request, env}) {
       supabaseFetch(env, `pilots?project_id=eq.${id}&select=id,status,success_criteria,start_date,end_date,created_at,pilot_results(id,outcome,summary,recorded_by,created_at)&order=created_at.desc`),
       supabaseFetch(env, `proposals?project_id=eq.${id}&select=id,status,amount,currency,terms,sent_at,created_at&order=created_at.desc`),
       supabaseFetch(env, `contracts?project_id=eq.${id}&select=id,status,value,currency,term,signed_at,created_at&order=created_at.desc`),
-      supabaseFetch(env, `project_documents?project_id=eq.${id}&select=id,title,url,document_type,visibility,created_at&order=created_at.desc`),
+      supabaseFetch(env, `project_documents?project_id=eq.${id}&select=id,title,url,storage_path,document_type,visibility,created_at&order=created_at.desc`),
       supabaseFetch(env, `project_updates?project_id=eq.${id}&select=id,body,created_by,created_at&order=created_at.desc`),
       supabaseFetch(env, `internal_notes?project_id=eq.${id}&select=id,body,created_by,created_at&order=created_at.desc`)
     ]);
@@ -26,7 +27,7 @@ export async function opportunityDetail({request, env}) {
     const project = projectRows[0];
     if (!project) return json({error: 'Opportunity not found.'}, {status: 404});
 
-    return json({project, samples, pilots, proposals, contracts, documents, updates, notes});
+    return json({project, samples, pilots, proposals, contracts, documents: await withSignedUrls(env, documents), updates, notes});
   } catch (error) {
     return json({error: error.message}, {status: 500});
   }

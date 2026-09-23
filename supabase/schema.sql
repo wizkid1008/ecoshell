@@ -148,7 +148,8 @@ create table if not exists project_documents (
   id uuid primary key default gen_random_uuid(),
   project_id uuid references projects(id) on delete cascade,
   title text not null,
-  url text not null,
+  url text,
+  storage_path text,
   document_type text,
   visibility text not null default 'client' check (visibility in ('client', 'internal')),
   created_at timestamptz not null default now()
@@ -450,3 +451,18 @@ values
   ('Injection moulding'), ('Blow moulding'), ('Extrusion'), ('Thermoforming'),
   ('Compression moulding'), ('Rotational moulding'), ('Film / sheet extrusion'), ('3D printing')
 on conflict (name) do nothing;
+
+-- Lets an uploaded document live alongside (or instead of) a linked one:
+-- url is now optional, storage_path holds the Supabase Storage object path
+-- when a file was uploaded rather than linked. The Worker only ever talks
+-- to Storage with the service-role key (same as every other table here),
+-- so no storage.objects policy is needed beyond RLS being on by default.
+alter table project_documents add column if not exists storage_path text;
+alter table project_documents alter column url drop not null;
+
+-- Private bucket -- a document's URL is only ever handed out as a
+-- short-lived signed link generated per-request by the Worker, so an
+-- internal-only document's file isn't reachable just by guessing its path.
+insert into storage.buckets (id, name, public)
+values ('documents', 'documents', false)
+on conflict (id) do nothing;
