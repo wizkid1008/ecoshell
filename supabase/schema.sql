@@ -100,6 +100,7 @@ create table if not exists sample_requests (
   shipping_address text,
   tracking_number text,
   admin_note text,
+  created_by text,
   created_at timestamptz not null default now()
 );
 
@@ -110,6 +111,7 @@ create table if not exists pilots (
   start_date date,
   end_date date,
   status text not null default 'planned' check (status in ('planned', 'in_progress', 'complete')),
+  created_by text,
   created_at timestamptz not null default now()
 );
 
@@ -130,6 +132,7 @@ create table if not exists proposals (
   terms text,
   status text not null default 'draft' check (status in ('draft', 'sent', 'accepted', 'declined')),
   sent_at timestamptz,
+  created_by text,
   created_at timestamptz not null default now()
 );
 
@@ -141,6 +144,7 @@ create table if not exists contracts (
   term text,
   status text not null default 'pending' check (status in ('pending', 'signed', 'active', 'ended')),
   signed_at timestamptz,
+  created_by text,
   created_at timestamptz not null default now()
 );
 
@@ -152,6 +156,7 @@ create table if not exists project_documents (
   storage_path text,
   document_type text,
   visibility text not null default 'client' check (visibility in ('client', 'internal')),
+  created_by text,
   created_at timestamptz not null default now()
 );
 
@@ -466,3 +471,12 @@ alter table project_documents alter column url drop not null;
 insert into storage.buckets (id, name, public)
 values ('documents', 'documents', false)
 on conflict (id) do nothing;
+
+-- Track who recorded a sample/pilot/proposal/contract/document, matching
+-- the created_by already on project_updates/internal_notes -- admin
+-- detail rows were showing no attribution at all for these five.
+alter table sample_requests add column if not exists created_by text;
+alter table pilots add column if not exists created_by text;
+alter table proposals add column if not exists created_by text;
+alter table contracts add column if not exists created_by text;
+alter table project_documents add column if not exists created_by text;

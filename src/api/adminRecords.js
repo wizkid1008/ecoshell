@@ -89,11 +89,12 @@ export async function sampleCreate({request, env}) {
   if (!payload.project_id) return json({error: 'project_id is required.'}, {status: 400});
 
   try {
-    const rows = await supabaseFetch(env, 'sample_requests?select=id,status,shipping_name,shipping_address,tracking_number,admin_note,created_at', {
+    const rows = await supabaseFetch(env, 'sample_requests?select=id,status,shipping_name,shipping_address,tracking_number,admin_note,created_by,created_at', {
       method: 'POST',
       headers: {prefer: 'return=representation'},
       body: JSON.stringify({
         project_id: payload.project_id,
+        created_by: auth.user.email,
         ...pick(payload, ['status', 'shipping_name', 'shipping_address', 'tracking_number', 'admin_note'])
       })
     });
@@ -111,11 +112,12 @@ export async function pilotCreate({request, env}) {
   if (!payload.project_id) return json({error: 'project_id is required.'}, {status: 400});
 
   try {
-    const rows = await supabaseFetch(env, 'pilots?select=id,status,success_criteria,start_date,end_date,created_at', {
+    const rows = await supabaseFetch(env, 'pilots?select=id,status,success_criteria,start_date,end_date,created_by,created_at', {
       method: 'POST',
       headers: {prefer: 'return=representation'},
       body: JSON.stringify({
         project_id: payload.project_id,
+        created_by: auth.user.email,
         ...pick(payload, ['status', 'success_criteria', 'start_date', 'end_date'])
       })
     });
@@ -158,11 +160,12 @@ export async function proposalCreate({request, env}) {
   if (!payload.project_id) return json({error: 'project_id is required.'}, {status: 400});
 
   try {
-    const rows = await supabaseFetch(env, 'proposals?select=id,status,amount,currency,terms,sent_at,created_at', {
+    const rows = await supabaseFetch(env, 'proposals?select=id,status,amount,currency,terms,sent_at,created_by,created_at', {
       method: 'POST',
       headers: {prefer: 'return=representation'},
       body: JSON.stringify({
         project_id: payload.project_id,
+        created_by: auth.user.email,
         ...pick(payload, ['status', 'amount', 'currency', 'terms', 'sent_at'])
       })
     });
@@ -180,11 +183,12 @@ export async function contractCreate({request, env}) {
   if (!payload.project_id) return json({error: 'project_id is required.'}, {status: 400});
 
   try {
-    const rows = await supabaseFetch(env, 'contracts?select=id,status,value,currency,term,signed_at,created_at', {
+    const rows = await supabaseFetch(env, 'contracts?select=id,status,value,currency,term,signed_at,created_by,created_at', {
       method: 'POST',
       headers: {prefer: 'return=representation'},
       body: JSON.stringify({
         project_id: payload.project_id,
+        created_by: auth.user.email,
         ...pick(payload, ['status', 'value', 'currency', 'term', 'signed_at'])
       })
     });
@@ -204,7 +208,7 @@ export async function documentCreate({request, env}) {
   }
 
   try {
-    const rows = await supabaseFetch(env, 'project_documents?select=id,title,url,document_type,visibility,created_at', {
+    const rows = await supabaseFetch(env, 'project_documents?select=id,title,url,document_type,visibility,created_by,created_at', {
       method: 'POST',
       headers: {prefer: 'return=representation'},
       body: JSON.stringify({
@@ -212,7 +216,8 @@ export async function documentCreate({request, env}) {
         title: payload.title,
         url: payload.url,
         document_type: payload.document_type || null,
-        visibility: payload.visibility === 'internal' ? 'internal' : 'client'
+        visibility: payload.visibility === 'internal' ? 'internal' : 'client',
+        created_by: auth.user.email
       })
     });
     return json({document: rows[0]});
@@ -240,7 +245,7 @@ export async function documentUpload({request, env}) {
     const path = `${projectId}/${Date.now()}-${file.name}`;
     await uploadDocumentFile(env, path, file);
 
-    const rows = await supabaseFetch(env, 'project_documents?select=id,title,url,storage_path,document_type,visibility,created_at', {
+    const rows = await supabaseFetch(env, 'project_documents?select=id,title,url,storage_path,document_type,visibility,created_by,created_at', {
       method: 'POST',
       headers: {prefer: 'return=representation'},
       body: JSON.stringify({
@@ -248,7 +253,8 @@ export async function documentUpload({request, env}) {
         title,
         storage_path: path,
         document_type: documentType,
-        visibility
+        visibility,
+        created_by: auth.user.email
       })
     });
     return json({document: await withSignedUrl(env, rows[0])});
@@ -285,13 +291,13 @@ function makeUpdater(table, fields, select) {
 export const sampleUpdate = makeUpdater(
   'sample_requests',
   ['status', 'shipping_name', 'shipping_address', 'tracking_number', 'admin_note'],
-  'id,status,shipping_name,shipping_address,tracking_number,admin_note,created_at'
+  'id,status,shipping_name,shipping_address,tracking_number,admin_note,created_by,created_at'
 );
 
 export const pilotUpdate = makeUpdater(
   'pilots',
   ['status', 'success_criteria', 'start_date', 'end_date'],
-  'id,status,success_criteria,start_date,end_date,created_at'
+  'id,status,success_criteria,start_date,end_date,created_by,created_at'
 );
 
 export const pilotResultUpdate = makeUpdater(
@@ -303,19 +309,19 @@ export const pilotResultUpdate = makeUpdater(
 export const proposalUpdate = makeUpdater(
   'proposals',
   ['status', 'amount', 'currency', 'terms', 'sent_at'],
-  'id,status,amount,currency,terms,sent_at,created_at'
+  'id,status,amount,currency,terms,sent_at,created_by,created_at'
 );
 
 export const contractUpdate = makeUpdater(
   'contracts',
   ['status', 'value', 'currency', 'term', 'signed_at'],
-  'id,status,value,currency,term,signed_at,created_at'
+  'id,status,value,currency,term,signed_at,created_by,created_at'
 );
 
 export const documentUpdate = makeUpdater(
   'project_documents',
   ['title', 'url', 'document_type', 'visibility'],
-  'id,title,url,document_type,visibility,created_at'
+  'id,title,url,storage_path,document_type,visibility,created_by,created_at'
 );
 
 export const noteUpdate = makeUpdater(

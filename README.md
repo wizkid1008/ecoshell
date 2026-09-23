@@ -141,7 +141,10 @@ Backend files:
   first — `POST /api/admin/companies` finds-or-updates by name rather than
   duplicating an existing one. `POST /api/admin/documents/upload` uploads a
   file straight into Supabase Storage instead of linking one already hosted
-  elsewhere — see `src/lib/storage.js`. Requires `role: admin`.
+  elsewhere — see `src/lib/storage.js`. Every sample/pilot/proposal/
+  contract/document create now stamps `created_by` with the admin's email
+  (matching notes/updates, which already had it), shown alongside the
+  date on each row in the opportunity detail view. Requires `role: admin`.
 - `src/api/profile.js` returns/updates the signed-in user's own profile
   (name, phone, country; members also get company name, job title, industry,
   archetype and LinkedIn profile URL). Saving a company name finds-or-creates

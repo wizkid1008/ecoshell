@@ -229,6 +229,18 @@
     return String(status || 'new').replace(/_/g, ' ');
   }
 
+  function formatDate(dateString){
+    if(!dateString) return '';
+    return new Date(dateString).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
+  }
+
+  // "Sep 22, 2026 · kyle@ecoshell.eco" — the entry-attribution line shown
+  // on every record row, since created_at exists on every table but
+  // wasn't being surfaced anywhere before.
+  function entryMeta(r){
+    return [formatDate(r.created_at), r.created_by].filter(Boolean).join(' · ');
+  }
+
   var STALE_DAYS = 14;
 
   function daysSince(dateString){
@@ -1056,7 +1068,7 @@
       sample: {
         label: 'sample', createLabel: 'Add sample', createUrl: '/api/admin/samples', updateUrl: '/api/admin/samples',
         items: data.samples || [],
-        row: function(r){ return {title: labelStatus(r.status), sub: [r.shipping_name, r.tracking_number ? 'Tracking ' + r.tracking_number : null].filter(Boolean).join(' · ')}; },
+        row: function(r){ return {title: labelStatus(r.status), sub: [r.shipping_name, r.tracking_number ? 'Tracking ' + r.tracking_number : null, entryMeta(r)].filter(Boolean).join(' · ')}; },
         fieldsHtml: function(r){
           r = r || {};
           return '<div class="frow">' +
@@ -1078,7 +1090,7 @@
         items: data.pilots || [],
         row: function(r){
           var resultCount = (r.pilot_results || []).length;
-          return {title: labelStatus(r.status), sub: [r.success_criteria, (r.start_date || r.end_date) ? (r.start_date || '?') + ' – ' + (r.end_date || '?') : null, resultCount ? resultCount + ' result' + (resultCount > 1 ? 's' : '') : null].filter(Boolean).join(' · ')};
+          return {title: labelStatus(r.status), sub: [r.success_criteria, (r.start_date || r.end_date) ? (r.start_date || '?') + ' – ' + (r.end_date || '?') : null, resultCount ? resultCount + ' result' + (resultCount > 1 ? 's' : '') : null, entryMeta(r)].filter(Boolean).join(' · ')};
         },
         fieldsHtml: function(r){
           r = r || {};
@@ -1101,7 +1113,7 @@
       proposal: {
         label: 'proposal', createLabel: 'Add proposal', createUrl: '/api/admin/proposals', updateUrl: '/api/admin/proposals',
         items: data.proposals || [],
-        row: function(r){ return {title: labelStatus(r.status), sub: r.amount ? (r.currency || 'USD') + ' ' + r.amount : ''}; },
+        row: function(r){ return {title: labelStatus(r.status), sub: [r.amount ? (r.currency || 'USD') + ' ' + r.amount : null, entryMeta(r)].filter(Boolean).join(' · ')}; },
         fieldsHtml: function(r){
           r = r || {};
           return '<div class="frow">' +
@@ -1121,7 +1133,7 @@
       contract: {
         label: 'contract', createLabel: 'Add contract', createUrl: '/api/admin/contracts', updateUrl: '/api/admin/contracts',
         items: data.contracts || [],
-        row: function(r){ return {title: labelStatus(r.status), sub: r.value ? (r.currency || 'USD') + ' ' + r.value : ''}; },
+        row: function(r){ return {title: labelStatus(r.status), sub: [r.value ? (r.currency || 'USD') + ' ' + r.value : null, entryMeta(r)].filter(Boolean).join(' · ')}; },
         fieldsHtml: function(r){
           r = r || {};
           return '<div class="frow">' +
@@ -1141,7 +1153,7 @@
       document: {
         label: 'document', createLabel: 'Add document', createUrl: '/api/admin/documents', updateUrl: '/api/admin/documents',
         items: data.documents || [],
-        row: function(r){ return {title: r.title, sub: [labelStatus(r.visibility), r.document_type].filter(Boolean).join(' · ')}; },
+        row: function(r){ return {title: r.title, sub: [labelStatus(r.visibility), r.document_type, entryMeta(r)].filter(Boolean).join(' · ')}; },
         fieldsHtml: function(r){
           r = r || {};
           var uploadHtml = r.id ? '' : (
@@ -1170,14 +1182,14 @@
       clientUpdate: {
         label: 'client update', createLabel: 'Post update', createUrl: null, updateUrl: '/api/admin/updates',
         items: data.updates || [],
-        row: function(r){ return {title: r.body, sub: ''}; },
+        row: function(r){ return {title: r.body, sub: entryMeta(r)}; },
         fieldsHtml: function(r){ r = r || {}; return '<div class="field"><label for="fBody">Update</label><textarea id="fBody" placeholder="Shown to the client">' + esc(r.body || '') + '</textarea></div>'; },
         payload: function(){ return {body: document.getElementById('fBody').value}; }
       },
       note: {
         label: 'internal note', createLabel: 'Add note', createUrl: null, updateUrl: '/api/admin/notes',
         items: data.notes || [],
-        row: function(r){ return {title: r.body, sub: '— ' + r.created_by}; },
+        row: function(r){ return {title: r.body, sub: entryMeta(r)}; },
         fieldsHtml: function(r){ r = r || {}; return '<div class="field"><label for="fBody">Note</label><textarea id="fBody" placeholder="Admin only, never shown to the client">' + esc(r.body || '') + '</textarea></div>'; },
         payload: function(){ return {body: document.getElementById('fBody').value}; }
       }
@@ -1243,7 +1255,7 @@
       });
       return '<article class="portal-card">' +
         '<div class="card-head"><h3>' + esc(heading) + '</h3><button type="button" class="icon-btn icon-btn--accent" data-add-record="' + type + '" aria-label="' + esc(cfg.createLabel) + '">' + ICON_PLUS + '</button></div>' +
-        rowlistHtml(rows, 'Nothing recorded yet.', true) +
+        '<div class="rowlist-scroll">' + rowlistHtml(rows, 'Nothing recorded yet.', true) + '</div>' +
       '</article>';
     }
 
