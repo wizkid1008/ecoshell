@@ -300,7 +300,7 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 .btn--block{width:100%;text-align:center;justify-content:center}
 .auth-hint{color:#9FB4A7;font-size:13px;margin-top:20px;line-height:1.5}
 .auth .portal-status{margin-top:16px;max-width:none}
-.portal-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:18px}
+.portal-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:18px}
 .portal-kpis article{background:var(--paper);padding:14px 16px;display:grid;gap:2px}
 .portal-kpis b{font-family:var(--f-display);font-size:24px;font-weight:400;color:var(--deep);line-height:1}
 .portal-kpis span{font-family:var(--f-display);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--stone)}

@@ -407,15 +407,6 @@
     '</div>';
   }
 
-  function renderAdminKpis(data){
-    kpis.innerHTML = [
-      '<article><b>' + data.enquiries.length + '</b><span>Enquiries</span></article>',
-      '<article><b>' + data.projects.length + '</b><span>Opportunities</span></article>',
-      '<article><b>' + data.samples.length + '</b><span>Samples</span></article>',
-      '<article><b>' + data.clients.length + '</b><span>Clients</span></article>'
-    ].join('');
-  }
-
   function countBy(items, key){
     var counts = {};
     items.forEach(function(item){
@@ -441,6 +432,12 @@
     var companies = data.companies || [];
     var archetypeCounts = countBy(clients, 'archetype');
     var industryCounts = countBy(clients, 'industry');
+
+    kpis.hidden = false;
+    kpis.innerHTML = [
+      '<article><b>' + clients.length + '</b><span>Clients</span></article>',
+      '<article><b>' + companies.length + '</b><span>Companies</span></article>'
+    ].join('');
 
     var editIcon = function(attr, id){
       return '<button type="button" class="icon-btn" data-' + attr + '="' + esc(id) + '" aria-label="Edit profile" title="Edit profile">' + ICON_PENCIL + '</button>';
@@ -654,7 +651,21 @@
     var stagePair = STAGES.find(function(s){ return s[0] === stage; });
     var stageLabel = stagePair ? stagePair[1] : labelStatus(stage);
     heading.textContent = stageLabel;
-    var projectRows = data.projects.filter(function(item){ return item.status === stage; }).map(function(item){
+
+    var stageProjects = data.projects.filter(function(item){ return item.status === stage; });
+    var stageRefCodes = stageProjects.map(function(p){ return p.reference_code; });
+    function countFor(arr){
+      return (arr || []).filter(function(r){ return stageRefCodes.indexOf(r.projects && r.projects.reference_code) !== -1; }).length;
+    }
+    kpis.hidden = false;
+    kpis.innerHTML = [
+      '<article><b>' + stageProjects.length + '</b><span>Opportunities</span></article>',
+      '<article><b>' + countFor(data.samples) + '</b><span>Samples</span></article>',
+      '<article><b>' + countFor(data.pilots) + '</b><span>Pilots</span></article>',
+      '<article><b>' + countFor(data.proposals) + '</b><span>Proposals</span></article>'
+    ].join('');
+
+    var projectRows = stageProjects.map(function(item){
       var sub = (item.companies?.name || 'Company') + ' · Owner: ' + (item.owner ? (item.owner.name || item.owner.email) : 'Unassigned') +
         ' · Contact: ' + (item.contact ? (item.contact.name || item.contact.email) : 'No contact');
       return rowItem({
@@ -1021,7 +1032,6 @@
         setStatus('', false);
         state.data = result.body;
         renderAdminNav(result.body);
-        renderAdminKpis(result.body);
         renderAdminList();
       })
       .catch(function(){
