@@ -328,6 +328,8 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 /* ---------- section card head + icon buttons ---------- */
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .card-head h3{margin:0}
+.search-input{font-family:var(--f-body);font-size:14px;color:var(--ink);background:var(--paper);border:1px solid var(--line);padding:8px 12px;width:220px;max-width:50%}
+.search-input:focus{outline:none;border-color:var(--green)}
 .icon-btn{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;width:32px;height:32px;color:var(--stone);cursor:pointer;flex:none;border-radius:7px;transition:background .15s,color .15s}
 .icon-btn:hover{background:var(--mist-2);color:var(--deep)}
 .icon-btn--accent{background:var(--mist-2);color:var(--green)}

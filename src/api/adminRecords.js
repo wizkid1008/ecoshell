@@ -316,7 +316,7 @@ export async function companyUpdate({request, env}) {
   }
 }
 
-const CLIENT_FIELDS = 'id,email,name,role,status,company_name,job_title,phone,country,industry,archetype,created_at';
+const CLIENT_FIELDS = 'id,email,name,role,status,company_name,job_title,phone,country,industry,archetype,linkedin_url,created_at';
 const CLIENT_STATUSES = ['lead', 'contact', 'client'];
 
 export async function clientUpdate({request, env}) {
@@ -329,7 +329,7 @@ export async function clientUpdate({request, env}) {
     return json({error: 'Invalid status.'}, {status: 400});
   }
 
-  const update = pick(payload, ['name', 'status', 'job_title', 'phone', 'country', 'industry', 'archetype']);
+  const update = pick(payload, ['name', 'status', 'job_title', 'phone', 'country', 'industry', 'archetype', 'linkedin_url']);
   if (!Object.keys(update).length) return json({error: 'No fields to update.'}, {status: 400});
 
   try {

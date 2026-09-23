@@ -49,6 +49,7 @@ create table if not exists users (
   country text,
   industry text,
   archetype text,
+  linkedin_url text,
   created_at timestamptz not null default now()
 );
 
@@ -337,3 +338,4 @@ on conflict (email) do nothing;
 -- projects, which would wipe them) -- just run this statement on its own.
 -- Already included in the create table above for fresh installs.
 alter table projects add column if not exists stage_changed_at timestamptz not null default now();
+alter table users add column if not exists linkedin_url text;

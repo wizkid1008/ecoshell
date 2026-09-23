@@ -15,7 +15,7 @@ export async function adminOverview({request, env}) {
       supabaseFetch(env, 'pilots?select=id,status,success_criteria,start_date,end_date,created_at,projects(reference_code,name,companies(name))&order=created_at.desc'),
       supabaseFetch(env, 'proposals?select=id,status,amount,currency,sent_at,created_at,projects(reference_code,name,companies(name))&order=created_at.desc'),
       supabaseFetch(env, 'contracts?select=id,status,value,currency,signed_at,created_at,projects(reference_code,name,companies(name))&order=created_at.desc'),
-      supabaseFetch(env, 'users?role=eq.member&select=id,email,name,status,company_name,job_title,phone,country,industry,archetype,created_at&order=created_at.desc'),
+      supabaseFetch(env, 'users?role=eq.member&select=id,email,name,status,company_name,job_title,phone,country,industry,archetype,linkedin_url,created_at&order=created_at.desc'),
       supabaseFetch(env, 'users?role=eq.admin&select=id,email,name&order=name.asc'),
       supabaseFetch(env, 'companies?select=id,name,industry,archetype,country,created_at&order=created_at.desc')
     ]);

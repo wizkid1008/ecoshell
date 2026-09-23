@@ -91,15 +91,19 @@ company, its contacts, and each opportunity between them:
   `src/api/clientProjects.js` or any client-facing response — there's no
   code path that could leak one to a client account.
 
-**Admin workflow**: Opportunities tab → click a card → detail view with the
-pipeline-stage, owner, polymer/process/target fields, and one section each
-for samples, pilot (+ results), proposal, contract, documents, client-visible
-updates and internal notes — click any existing entry to load it back into
-that section's form and save it as an edit instead of adding a new one. The
-Clients tab lists every contact (`role: member`) with a status pill and
-By-archetype / By-industry breakdown counts, plus a Companies list below it;
-clicking a client or company opens an edit view for their profile / company
-record.
+**Admin workflow**: the sidebar lists the 12 pipeline stages (with a live
+count each) instead of flat tabs — click a stage to see just the
+opportunities sitting there, click one to open its detail view (a vertical
+stepper replaces the stage list in the sidebar while you're in it, with any
+other opportunities for that company listed below it). Every record section
+(samples, pilot + results, proposal, contract, documents, client-visible
+updates, internal notes) is a compact row list with a "+" to add one and a
+click-to-edit popup, not a permanently open form. The Contacts tab lists
+every contact (`role: member`) and every company, each searchable by name/
+email, with a status pill, opportunity count, and By-archetype /
+By-industry breakdown counts; clicking a row goes to that contact's or
+company's opportunity workflow (falling back to a profile-edit popup, via
+the row's pencil icon, if they have none yet).
 
 **Client workflow**: sign in → see every opportunity for your company (not
 just ones you personally started) — stage, sample/pilot progress, proposal
@@ -133,9 +137,10 @@ Backend files:
   profile on their behalf (`PATCH /api/admin/companies`,
   `PATCH /api/admin/clients`). Requires `role: admin`.
 - `src/api/profile.js` returns/updates the signed-in user's own profile
-  (name, phone, country; members also get company name, job title, industry
-  and archetype). Saving a company name finds-or-creates that company and
-  links it. Country is validated against the `countries` table.
+  (name, phone, country; members also get company name, job title, industry,
+  archetype and LinkedIn profile URL). Saving a company name finds-or-creates
+  that company and links it. Country is validated against the `countries`
+  table.
 - `src/api/countries.js` returns the full `countries` table (public, no
   session required) — used to populate the Account form's Country dropdown.
 - `src/lib/supabase.js` shared Supabase REST helpers.

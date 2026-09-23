@@ -19,6 +19,7 @@
   var accountStatusEl = document.getElementById('accountStatus');
   var acctClientRow1 = document.getElementById('acctClientRow1');
   var acctClientRow2 = document.getElementById('acctClientRow2');
+  var acctClientRow3 = document.getElementById('acctClientRow3');
   var modalRoot = document.getElementById('modalRoot');
 
   var ICON_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
@@ -142,7 +143,7 @@
       '<p class="app-nav__label">Closed</p>' +
       closed.map(function(pair){ return stageNavItem(pair, counts[pair[0]] || 0); }).join('') +
       '<p class="app-nav__label">Workspace</p>' +
-      navItem('clients', ICON_CLIENTS, 'Clients') +
+      navItem('clients', ICON_CLIENTS, 'Contacts') +
       navItem('account', ICON_ACCOUNT, 'Account');
   }
 
@@ -460,7 +461,7 @@
   }
 
   function renderClientsView(data){
-    heading.textContent = 'Clients';
+    heading.textContent = 'Contacts';
     var clients = data.clients || [];
     var companies = data.companies || [];
     var archetypeCounts = countBy(clients, 'archetype');
@@ -468,7 +469,7 @@
 
     kpis.hidden = false;
     kpis.innerHTML = [
-      '<article><b>' + clients.length + '</b><span>Clients</span></article>',
+      '<article><b>' + clients.length + '</b><span>Contacts</span></article>',
       '<article><b>' + companies.length + '</b><span>Companies</span></article>'
     ].join('');
 
@@ -487,57 +488,93 @@
       if(p.companies && p.companies.name) oppCountByCompany[p.companies.name] = (oppCountByCompany[p.companies.name] || 0) + 1;
     });
 
-    var clientRows = clients.map(function(item){
+    function contactRowHtml(item){
       var details = [item.company_name, item.job_title, item.industry, oppCountLabel(oppCountByEmail[item.email])].filter(Boolean).join(' · ');
       return rowItem({
         title: item.name || item.email, sub: details, status: item.status || 'lead',
         clickable: true, extraHtml: editIcon('edit-client', item.id),
         dataAttrs: ' data-go-client="' + esc(item.id) + '"'
       });
-    });
+    }
 
-    var companyRows = companies.map(function(item){
+    function companyRowHtml(item){
       var details = [item.industry, item.archetype, item.country, oppCountLabel(oppCountByCompany[item.name])].filter(Boolean).join(' · ');
       return rowItem({
         title: item.name, sub: details, clickable: true,
         extraHtml: editIcon('edit-company', item.id),
         dataAttrs: ' data-go-company="' + esc(item.id) + '"'
       });
-    });
+    }
+
+    function matchesQuery(text, q){
+      return String(text || '').toLowerCase().indexOf(q) !== -1;
+    }
+
+    function wireContactRows(){
+      document.querySelectorAll('#contactsRowlist [data-edit-client]').forEach(function(el){
+        el.addEventListener('click', function(event){ event.stopPropagation(); openClientModal(el.getAttribute('data-edit-client')); });
+      });
+      document.querySelectorAll('#contactsRowlist [data-go-client]').forEach(function(el){
+        el.addEventListener('click', function(event){
+          if(event.target.closest('[data-edit-client]')) return;
+          var client = clients.find(function(c){ return String(c.id) === el.getAttribute('data-go-client'); });
+          if(!client) return;
+          var matches = (data.projects || []).filter(function(p){ return p.contact && p.contact.email === client.email; });
+          goToClientOpportunity(matches, function(){ openClientModal(client.id); });
+        });
+      });
+    }
+
+    function wireCompanyRows(){
+      document.querySelectorAll('#companiesRowlist [data-edit-company]').forEach(function(el){
+        el.addEventListener('click', function(event){ event.stopPropagation(); openCompanyModal(el.getAttribute('data-edit-company')); });
+      });
+      document.querySelectorAll('#companiesRowlist [data-go-company]').forEach(function(el){
+        el.addEventListener('click', function(event){
+          if(event.target.closest('[data-edit-company]')) return;
+          var company = companies.find(function(c){ return String(c.id) === el.getAttribute('data-go-company'); });
+          if(!company) return;
+          var matches = (data.projects || []).filter(function(p){ return p.companies && p.companies.name === company.name; });
+          goToClientOpportunity(matches, function(){ openCompanyModal(company.id); });
+        });
+      });
+    }
+
+    function renderContacts(query){
+      var q = query.trim().toLowerCase();
+      var filtered = !q ? clients : clients.filter(function(item){
+        return matchesQuery(item.name, q) || matchesQuery(item.email, q) || matchesQuery(item.company_name, q);
+      });
+      document.getElementById('contactsRowlist').innerHTML = rowlistHtml(filtered.map(contactRowHtml), q ? 'No contacts match that search.' : 'No contacts yet.', true);
+      wireContactRows();
+    }
+
+    function renderCompanies(query){
+      var q = query.trim().toLowerCase();
+      var filtered = !q ? companies : companies.filter(function(item){ return matchesQuery(item.name, q); });
+      document.getElementById('companiesRowlist').innerHTML = rowlistHtml(filtered.map(companyRowHtml), q ? 'No companies match that search.' : 'No companies yet.', true);
+      wireCompanyRows();
+    }
 
     list.innerHTML =
       '<div class="breakdown-grid">' +
         breakdownTable('By archetype', archetypeCounts) +
         breakdownTable('By industry', industryCounts) +
       '</div>' +
-      '<article class="portal-card"><h3>Clients</h3>' + rowlistHtml(clientRows, 'No client accounts yet.', true) + '</article>' +
-      '<article class="portal-card"><h3>Companies</h3>' + rowlistHtml(companyRows, 'No companies yet.', true) + '</article>';
+      '<article class="portal-card">' +
+        '<div class="card-head"><h3>Contacts</h3><input type="search" class="search-input" id="contactsSearch" placeholder="Search contacts..."></div>' +
+        '<div id="contactsRowlist"></div>' +
+      '</article>' +
+      '<article class="portal-card">' +
+        '<div class="card-head"><h3>Companies</h3><input type="search" class="search-input" id="companiesSearch" placeholder="Search companies..."></div>' +
+        '<div id="companiesRowlist"></div>' +
+      '</article>';
 
-    list.querySelectorAll('[data-edit-client]').forEach(function(el){
-      el.addEventListener('click', function(event){ event.stopPropagation(); openClientModal(el.getAttribute('data-edit-client')); });
-    });
-    list.querySelectorAll('[data-edit-company]').forEach(function(el){
-      el.addEventListener('click', function(event){ event.stopPropagation(); openCompanyModal(el.getAttribute('data-edit-company')); });
-    });
+    renderContacts('');
+    renderCompanies('');
 
-    list.querySelectorAll('[data-go-client]').forEach(function(el){
-      el.addEventListener('click', function(event){
-        if(event.target.closest('[data-edit-client]')) return;
-        var client = clients.find(function(c){ return String(c.id) === el.getAttribute('data-go-client'); });
-        if(!client) return;
-        var matches = (data.projects || []).filter(function(p){ return p.contact && p.contact.email === client.email; });
-        goToClientOpportunity(matches, function(){ openClientModal(client.id); });
-      });
-    });
-    list.querySelectorAll('[data-go-company]').forEach(function(el){
-      el.addEventListener('click', function(event){
-        if(event.target.closest('[data-edit-company]')) return;
-        var company = companies.find(function(c){ return String(c.id) === el.getAttribute('data-go-company'); });
-        if(!company) return;
-        var matches = (data.projects || []).filter(function(p){ return p.companies && p.companies.name === company.name; });
-        goToClientOpportunity(matches, function(){ openCompanyModal(company.id); });
-      });
-    });
+    document.getElementById('contactsSearch').addEventListener('input', function(event){ renderContacts(event.target.value); });
+    document.getElementById('companiesSearch').addEventListener('input', function(event){ renderCompanies(event.target.value); });
   }
 
   // A client/company row leads straight into their opportunity's workflow
@@ -595,7 +632,9 @@
           '<div class="frow">' +
             '<div class="field"><label for="clientEditIndustry">Industry</label><select id="clientEditIndustry">' + optionsHtml(INDUSTRIES, client.industry || '', 'Select an industry') + '</select></div>' +
             '<div class="field"><label for="clientEditArchetype">Archetype</label><select id="clientEditArchetype">' + optionsHtml(ARCHETYPES, client.archetype || '', 'Select an archetype') + '</select></div>' +
-          '</div>',
+          '</div>' +
+          '<p class="eyebrow" style="margin-top:6px">LinkedIn</p>' +
+          '<div class="field"><label for="clientEditLinkedin">Profile URL</label><input id="clientEditLinkedin" type="url" placeholder="https://linkedin.com/in/..." value="' + esc(client.linkedin_url || '') + '"></div>',
         onSave: function(modalEl, done){
           patchJSON('/api/admin/clients', {
             id: client.id,
@@ -606,7 +645,8 @@
             phone: document.getElementById('clientEditPhone').value,
             country: document.getElementById('clientEditCountry').value,
             industry: document.getElementById('clientEditIndustry').value,
-            archetype: document.getElementById('clientEditArchetype').value
+            archetype: document.getElementById('clientEditArchetype').value,
+            linkedin_url: document.getElementById('clientEditLinkedin').value
           }).then(function(result){
             if(!result.ok){ done(false, result.body.error || 'Could not save.'); return; }
             done(true);
@@ -1121,6 +1161,7 @@
         document.getElementById('acctCountry').value = profile.country || '';
         document.getElementById('acctIndustry').value = profile.industry || '';
         document.getElementById('acctArchetype').value = profile.archetype || '';
+        document.getElementById('acctLinkedin').value = profile.linkedin_url || '';
         setAccountStatus('', false);
       })
       .catch(function(){
@@ -1136,6 +1177,7 @@
       var isMember = state.role === 'member';
       acctClientRow1.hidden = !isMember;
       acctClientRow2.hidden = !isMember;
+      acctClientRow3.hidden = !isMember;
       loadAccountForm();
       return;
     }
@@ -1220,6 +1262,7 @@
       payload.job_title = document.getElementById('acctJobTitle').value;
       payload.industry = document.getElementById('acctIndustry').value;
       payload.archetype = document.getElementById('acctArchetype').value;
+      payload.linkedin_url = document.getElementById('acctLinkedin').value;
     }
 
     fetch('/api/profile', {

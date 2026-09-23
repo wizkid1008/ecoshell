@@ -2,7 +2,7 @@ import {json, requireEnv, supabaseFetch} from '../lib/supabase.js';
 import {resolveSession} from '../lib/auth.js';
 import {findOrCreateCompany} from '../lib/companies.js';
 
-const PROFILE_FIELDS = 'email,name,role,status,company_name,job_title,phone,country,industry,archetype';
+const PROFILE_FIELDS = 'email,name,role,status,company_name,job_title,phone,country,industry,archetype,linkedin_url';
 
 const INDUSTRIES = ['Beauty', 'Fashion', 'Food and Agri', 'Health & Life Sciences', 'Tech', 'Toys'];
 const ARCHETYPES = [
@@ -49,7 +49,7 @@ export async function profileUpdate({request, env}) {
 
   const update = {};
   var fields = ['name', 'phone', 'country'];
-  if (user.role === 'member') fields = fields.concat(['company_name', 'job_title', 'industry', 'archetype']);
+  if (user.role === 'member') fields = fields.concat(['company_name', 'job_title', 'industry', 'archetype', 'linkedin_url']);
   fields.forEach((key) => {
     if (payload[key] !== undefined) update[key] = String(payload[key] || '').trim() || null;
   });
