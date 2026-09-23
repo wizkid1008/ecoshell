@@ -384,6 +384,7 @@ form{background:var(--paper);border:1px solid var(--line);padding:clamp(24px,3vw
 .modal-overlay{position:fixed;inset:0;background:rgba(16,32,26,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:200;opacity:0;pointer-events:none;transition:opacity .16s}
 .modal-overlay.is-open{opacity:1;pointer-events:auto}
 .modal{background:var(--paper);width:100%;max-width:540px;max-height:calc(100vh - 40px);overflow:auto;box-shadow:0 30px 70px rgba(16,32,26,.32);transform:translateY(10px);transition:transform .16s}
+.modal--wide{max-width:860px}
 .modal-overlay.is-open .modal{transform:translateY(0)}
 .modal__head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--paper)}
 .modal__head h3{font-family:var(--f-display);font-size:19px;font-weight:400;color:var(--deep);text-transform:none;letter-spacing:0;margin:0}

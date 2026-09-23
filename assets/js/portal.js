@@ -51,7 +51,7 @@
   function openModal(options){
     modalRoot.innerHTML =
       '<div class="modal-overlay" id="modalOverlay">' +
-        '<div class="modal" role="dialog" aria-modal="true">' +
+        '<div class="modal' + (options.wide ? ' modal--wide' : '') + '" role="dialog" aria-modal="true">' +
           '<div class="modal__head"><h3>' + esc(options.title) + '</h3><button type="button" class="modal__close" id="modalCloseBtn" aria-label="Close">' + ICON_CLOSE + '</button></div>' +
           '<div class="modal__body" id="modalBody">' + options.bodyHtml + '</div>' +
           '<div class="modal__foot">' +
@@ -755,6 +755,7 @@
       openModal({
         title: 'New contact',
         saveLabel: 'Add contact',
+        wide: true,
         bodyHtml:
           '<div class="frow">' +
             '<div class="field"><label for="newContactName">Name</label><input id="newContactName" placeholder="Jordan Lee"></div>' +
@@ -802,6 +803,7 @@
       openModal({
         title: 'New company',
         saveLabel: 'Add company',
+        wide: true,
         bodyHtml:
           '<div class="field"><label for="newCompanyName">Company name</label><input id="newCompanyName" placeholder="Acme Packaging"></div>' +
           '<div class="frow">' +
@@ -1036,6 +1038,7 @@
       openModal({
         title: client.name || client.email,
         saveLabel: 'Save client',
+        wide: true,
         bodyHtml:
           '<div class="frow">' +
             '<div class="field"><label for="clientEditName">Name</label><input id="clientEditName" value="' + esc(client.name || '') + '"></div>' +
@@ -1098,6 +1101,7 @@
       openModal({
         title: company.name,
         saveLabel: 'Save company',
+        wide: true,
         bodyHtml:
           companyEditField('companyEditName', 'Company name', company.name) +
           companyEditPair(
