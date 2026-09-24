@@ -195,6 +195,18 @@ create table if not exists project_updates (
   created_at timestamptz not null default now()
 );
 
+-- Two-way thread per opportunity -- unlike project_updates (admin-authored,
+-- one-way) either side can post here; both admin and client read the same
+-- rows.
+create table if not exists project_messages (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid references projects(id) on delete cascade,
+  sender_role text not null check (sender_role in ('admin', 'client')),
+  body text not null,
+  created_by text not null,
+  created_at timestamptz not null default now()
+);
+
 -- Admin-only notes. Never returned by any client-facing endpoint.
 create table if not exists internal_notes (
   id uuid primary key default gen_random_uuid(),
@@ -246,6 +258,7 @@ create index if not exists proposals_project_idx on proposals(project_id);
 create index if not exists contracts_project_idx on contracts(project_id);
 create index if not exists project_documents_project_idx on project_documents(project_id);
 create index if not exists project_updates_project_idx on project_updates(project_id);
+create index if not exists project_messages_project_idx on project_messages(project_id);
 create index if not exists internal_notes_project_idx on internal_notes(project_id);
 create index if not exists login_tokens_token_idx on login_tokens(token);
 create index if not exists login_tokens_expires_idx on login_tokens(expires_at);
@@ -260,6 +273,7 @@ alter table proposals enable row level security;
 alter table contracts enable row level security;
 alter table project_documents enable row level security;
 alter table project_updates enable row level security;
+alter table project_messages enable row level security;
 alter table internal_notes enable row level security;
 alter table users enable row level security;
 alter table login_tokens enable row level security;
@@ -279,6 +293,7 @@ drop policy if exists "service role manages proposals" on proposals;
 drop policy if exists "service role manages contracts" on contracts;
 drop policy if exists "service role manages project documents" on project_documents;
 drop policy if exists "service role manages project updates" on project_updates;
+drop policy if exists "service role manages project messages" on project_messages;
 drop policy if exists "service role manages internal notes" on internal_notes;
 drop policy if exists "service role manages users" on users;
 drop policy if exists "service role manages login tokens" on login_tokens;
@@ -316,6 +331,9 @@ create policy "service role manages project documents" on project_documents
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
 create policy "service role manages project updates" on project_updates
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
+create policy "service role manages project messages" on project_messages
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 
 create policy "service role manages internal notes" on internal_notes
@@ -535,3 +553,20 @@ alter table companies add column if not exists next_action text;
 alter table companies add column if not exists scoring_basis text;
 alter table companies add column if not exists account_owner text;
 alter table companies add column if not exists notes text;
+
+-- Two-way per-opportunity message thread (client and admin both post to
+-- the same rows) -- run this standalone block on an existing database
+-- instead of re-running the whole file.
+create table if not exists project_messages (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid references projects(id) on delete cascade,
+  sender_role text not null check (sender_role in ('admin', 'client')),
+  body text not null,
+  created_by text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists project_messages_project_idx on project_messages(project_id);
+alter table project_messages enable row level security;
+drop policy if exists "service role manages project messages" on project_messages;
+create policy "service role manages project messages" on project_messages
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');

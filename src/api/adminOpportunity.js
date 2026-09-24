@@ -13,7 +13,7 @@ export async function opportunityDetail({request, env}) {
   if (!id) return json({error: 'Opportunity id is required.'}, {status: 400});
 
   try {
-    const [projectRows, samples, pilots, proposals, contracts, documents, updates, notes] = await Promise.all([
+    const [projectRows, samples, pilots, proposals, contracts, documents, updates, messages, notes] = await Promise.all([
       supabaseFetch(env, `projects?id=eq.${id}&select=id,reference_code,name,status,polymer,process,target,created_at,stage_changed_at,companies(id,name,industry,archetype,country),owner:users!owner_id(id,name,email),contact:users!contact_id(id,name,email,job_title,phone)`),
       supabaseFetch(env, `sample_requests?project_id=eq.${id}&select=id,status,shipping_name,shipping_address,tracking_number,admin_note,created_by,created_at&order=created_at.desc`),
       supabaseFetch(env, `pilots?project_id=eq.${id}&select=id,status,success_criteria,start_date,end_date,created_by,created_at,pilot_results(id,outcome,summary,recorded_by,created_at)&order=created_at.desc`),
@@ -21,13 +21,14 @@ export async function opportunityDetail({request, env}) {
       supabaseFetch(env, `contracts?project_id=eq.${id}&select=id,status,value,currency,term,signed_at,created_by,created_at&order=created_at.desc`),
       supabaseFetch(env, `project_documents?project_id=eq.${id}&select=id,title,url,storage_path,document_type,visibility,created_by,created_at&order=created_at.desc`),
       supabaseFetch(env, `project_updates?project_id=eq.${id}&select=id,body,created_by,created_at&order=created_at.desc`),
+      supabaseFetch(env, `project_messages?project_id=eq.${id}&select=id,sender_role,body,created_by,created_at&order=created_at.asc`),
       supabaseFetch(env, `internal_notes?project_id=eq.${id}&select=id,body,created_by,created_at&order=created_at.desc`)
     ]);
 
     const project = projectRows[0];
     if (!project) return json({error: 'Opportunity not found.'}, {status: 404});
 
-    return json({project, samples, pilots, proposals, contracts, documents: await withSignedUrls(env, documents), updates, notes});
+    return json({project, samples, pilots, proposals, contracts, documents: await withSignedUrls(env, documents), updates, messages, notes});
   } catch (error) {
     return json({error: error.message}, {status: 500});
   }

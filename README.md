@@ -83,10 +83,16 @@ company, its contacts, and each opportunity between them:
   the last one).
 - **`project_documents`** — linked files/URLs per opportunity, each flagged
   `visibility: client` or `visibility: internal`. Only `client` documents
-  are ever returned by the client-facing endpoint.
+  are ever returned by the client-facing endpoint. Either an admin or a
+  client contact can upload one against their own opportunity; a
+  client-uploaded document is always stamped `visibility: client`.
 - **`project_updates`** — the client-visible log (shown in the client
   portal). Written by the system on enquiry and by admins via the opportunity
-  detail view.
+  detail view. One-way (admin → client) — see `project_messages` below for
+  the two-way thread.
+- **`project_messages`** — a two-way message thread per opportunity. Unlike
+  `project_updates`, a client can post here too — both sides read the same
+  rows (`sender_role`: `admin`/`client`).
 - **`internal_notes`** — admin-only notes. Never selected by
   `src/api/clientProjects.js` or any client-facing response — there's no
   code path that could leak one to a client account.
@@ -111,8 +117,10 @@ icon, if they have none yet).
 **Client workflow**: sign in → see every opportunity for your company (not
 just ones you personally started) — stage, sample/pilot progress, proposal
 and contract status, the latest client-visible updates, and any documents
-shared with you. Internal notes and other companies' opportunities are never
-visible.
+shared with you. Each opportunity card also has a message thread (post to
+`/api/client/messages`, admins reply from the opportunity detail view) and
+an upload button (`/api/client/documents/upload`) to attach a file directly.
+Internal notes and other companies' opportunities are never visible.
 
 Backend files:
 
@@ -153,6 +161,13 @@ Backend files:
   contract/document create now stamps `created_by` with the admin's email
   (matching notes/updates, which already had it), shown alongside the
   date on each row in the opportunity detail view. Requires `role: admin`.
+- `src/api/messages.js` posts to a project's two-way message thread —
+  `clientMessageCreate` (client, scoped to their own company's opportunity)
+  and `adminMessageCreate` (admin, any opportunity). Read by both
+  `clientProjects.js` and `adminOpportunity.js`.
+- `src/api/clientRecords.js` `clientDocumentUpload` — the client-facing
+  counterpart to the admin document upload, scoped to the client's own
+  opportunity and always `visibility: client`.
 - `src/api/profile.js` returns/updates the signed-in user's own profile
   (name, phone, country; members also get company name, job title, industry,
   archetype and LinkedIn profile URL). Saving a company name finds-or-creates

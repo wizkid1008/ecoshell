@@ -12,6 +12,8 @@ import {
 } from './api/lists.js';
 import {opportunityDetail} from './api/adminOpportunity.js';
 import {companiesImport} from './api/companiesImport.js';
+import {clientMessageCreate, adminMessageCreate} from './api/messages.js';
+import {clientDocumentUpload} from './api/clientRecords.js';
 import {
   opportunityCreate,
   sampleCreate,
@@ -63,6 +65,9 @@ const routes = [
   {method: 'PATCH', path: '/api/admin/clients', handler: clientUpdate},
   {method: 'POST', path: '/api/login', handler: login},
   {method: 'GET', path: '/api/client/projects', handler: clientProjects},
+  {method: 'POST', path: '/api/client/messages', handler: clientMessageCreate},
+  {method: 'POST', path: '/api/client/documents/upload', handler: clientDocumentUpload},
+  {method: 'POST', path: '/api/admin/messages', handler: adminMessageCreate},
   {method: 'GET', path: '/api/profile', handler: profileGet},
   {method: 'PATCH', path: '/api/profile', handler: profileUpdate},
   {method: 'GET', path: '/api/countries', handler: countriesList},

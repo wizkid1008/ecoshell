@@ -211,6 +211,9 @@
         project_updates: [
           {body: 'Pilot trial is underway on your line. Ecoshell is monitoring loading range and cycle time.', created_at: new Date().toISOString()},
           {body: 'Initial inquiry received and converted into a project.', created_at: new Date(Date.now() - 86400000).toISOString()}
+        ],
+        project_messages: [
+          {sender_role: 'admin', body: 'Sending over the technical data sheet now — let us know if you have questions.', created_by: 'kyle@ecoshell.eco', created_at: new Date(Date.now() - 86400000).toISOString()}
         ]
       }
     ]
@@ -423,6 +426,13 @@
         ? '<ul class="portal-updates">' + documents.map(function(d){ return '<li><a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(d.title) + '</a></li>'; }).join('') + '</ul>'
         : '<p class="portal-note">No shared documents yet.</p>';
 
+      var messages = project.project_messages || [];
+      var messagesHtml = messages.length
+        ? '<div class="rowlist-scroll"><ul class="portal-updates">' + messages.map(function(m){
+            return '<li><b>' + esc(m.sender_role === 'admin' ? 'Ecoshell' : 'You') + ':</b> ' + esc(m.body) + '<br><span class="rowlist__sub">' + esc(formatDate(m.created_at)) + '</span></li>';
+          }).join('') + '</ul></div>'
+        : '<p class="portal-note">No messages yet.</p>';
+
       return '<article class="portal-card">' +
         '<div class="portal-card__top"><div><p class="portal-ref">' + esc(project.reference_code) + '</p><h2>' + esc(project.name) + '</h2></div><span class="pill">' + esc(labelStatus(project.status)) + '</span></div>' +
         '<dl class="portal-meta"><div><dt>Company</dt><dd>' + esc(project.companies?.name || 'Client company') + '</dd></div><div><dt>Polymer</dt><dd>' + esc(project.polymer || 'Review needed') + '</dd></div><div><dt>Process</dt><dd>' + esc(project.process || 'Review needed') + '</dd></div></dl>' +
@@ -432,9 +442,63 @@
         (proposal ? '<p class="portal-note">Proposal: ' + esc(labelStatus(proposal.status)) + '</p>' : '') +
         (contract ? '<p class="portal-note">Contract: ' + esc(labelStatus(contract.status)) + '</p>' : '') +
         '<h3>Latest updates</h3><ul class="portal-updates">' + (updates || '<li>No updates yet.</li>') + '</ul>' +
-        '<h3>Documents</h3>' + docsHtml +
+        '<div class="card-head"><h3>Documents</h3><button type="button" class="icon-btn icon-btn--accent" data-upload-doc="' + esc(project.id) + '" aria-label="Upload document" title="Upload document">' + ICON_PLUS + '</button></div>' +
+        docsHtml +
+        '<h3>Messages</h3>' + messagesHtml +
+        '<div class="frow" style="margin-top:8px">' +
+          '<div class="field"><label class="visually-hidden" for="msgBody-' + esc(project.id) + '">Write a message</label><input id="msgBody-' + esc(project.id) + '" placeholder="Write a message to Ecoshell"></div>' +
+          '<button type="button" class="btn btn--solid" data-send-message="' + esc(project.id) + '">Send</button>' +
+        '</div>' +
       '</article>';
     }).join('');
+
+    list.querySelectorAll('[data-send-message]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var projectId = btn.getAttribute('data-send-message');
+        var input = document.getElementById('msgBody-' + projectId);
+        var body = input.value.trim();
+        if(!body) return;
+        btn.disabled = true;
+        postJSON('/api/client/messages', {project_id: projectId, body: body}).then(function(result){
+          btn.disabled = false;
+          if(!result.ok){ setStatus(result.body.error || 'Could not send message.', true); return; }
+          setStatus('', false);
+          loadClientDashboard(state.sessionToken);
+        });
+      });
+    });
+
+    list.querySelectorAll('[data-upload-doc]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var projectId = btn.getAttribute('data-upload-doc');
+        openModal({
+          title: 'Upload document',
+          saveLabel: 'Upload',
+          bodyHtml:
+            '<div class="field"><label for="cFileTitle">Title</label><input id="cFileTitle" placeholder="e.g. Spec sheet"></div>' +
+            '<div class="field"><label for="cFileType">Type</label><input id="cFileType" placeholder="e.g. spec sheet"></div>' +
+            '<div class="field"><label for="cFile">File</label><input type="file" id="cFile"></div>',
+          onSave: function(modalEl, done){
+            var fileInput = document.getElementById('cFile');
+            var file = fileInput && fileInput.files[0];
+            var title = document.getElementById('cFileTitle').value.trim();
+            if(!title || !file){ done(false, 'A title and a file are required.'); return; }
+            var form = new FormData();
+            form.append('project_id', projectId);
+            form.append('title', title);
+            form.append('document_type', document.getElementById('cFileType').value);
+            form.append('file', file);
+            fetch('/api/client/documents/upload', {method: 'POST', headers: {'x-session': state.sessionToken}, body: form})
+              .then(function(res){ return res.json().then(function(body){ return {ok: res.ok, body: body}; }); })
+              .then(function(result){
+                if(!result.ok){ done(false, result.body.error || 'Could not upload.'); return; }
+                done(true);
+                loadClientDashboard(state.sessionToken);
+              });
+          }
+        });
+      });
+    });
   }
 
   function loadClientDashboard(sessionToken){
@@ -1529,6 +1593,13 @@
           return out;
         }
       },
+      message: {
+        label: 'message', createLabel: 'Send message', createUrl: '/api/admin/messages', updateUrl: null,
+        items: data.messages || [],
+        row: function(r){ return {title: (r.sender_role === 'client' ? 'Client' : 'Admin') + ': ' + r.body, sub: entryMeta(r)}; },
+        fieldsHtml: function(){ return '<div class="field"><label for="fBody">Message</label><textarea id="fBody" placeholder="Visible to the client"></textarea></div>'; },
+        payload: function(){ return {body: document.getElementById('fBody').value}; }
+      },
       clientUpdate: {
         label: 'client update', createLabel: 'Post update', createUrl: null, updateUrl: '/api/admin/updates',
         items: data.updates || [],
@@ -1596,12 +1667,13 @@
 
     function sectionHtml(type, heading){
       var cfg = sections[type];
+      var clickable = type !== 'message';
       var rows = cfg.items.map(function(item){
         var r = cfg.row(item);
         var extraHtml = type === 'pilot'
           ? '<button type="button" class="icon-btn" data-add-result="' + esc(item.id) + '" aria-label="Record pilot result" title="Record pilot result">' + ICON_PLUS + '</button>'
           : '';
-        return rowItem({title: r.title, sub: r.sub, clickable: true, extraHtml: extraHtml, dataAttrs: ' data-open-record="' + type + '" data-id="' + esc(item.id) + '"'});
+        return rowItem({title: r.title, sub: r.sub, clickable: clickable, extraHtml: extraHtml, dataAttrs: clickable ? ' data-open-record="' + type + '" data-id="' + esc(item.id) + '"' : ''});
       });
       return '<article class="portal-card">' +
         '<div class="card-head"><h3>' + esc(heading) + '</h3><button type="button" class="icon-btn icon-btn--accent" data-add-record="' + type + '" aria-label="' + esc(cfg.createLabel) + '">' + ICON_PLUS + '</button></div>' +
@@ -1654,6 +1726,7 @@
       sectionHtml('proposal', 'Proposal') +
       sectionHtml('contract', 'Contract') +
       sectionHtml('document', 'Documents') +
+      sectionHtml('message', 'Messages') +
       sectionHtml('clientUpdate', 'Client-visible updates') +
       sectionHtml('note', 'Internal notes');
 
