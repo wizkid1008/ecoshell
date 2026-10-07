@@ -54,6 +54,7 @@ function rewrite(html, cur) {
     const clean = attrs.replace(/\s*data-(go|anchor|type)="[^"]*"/g, '');
     return `<a${clean} href="${h}">`;
   });
+  html = html.replace(/src="img\/logo\/([\w-]+\.png)"/g, (m, n) => `src="${asset(curFile, `assets/img/logo/${n}`)}"`);
   html = html.replace(/src="img\/([\w-]+)\.jpg"/g, (m, n) =>
     `src="${asset(curFile, `assets/img/${TEAM.has(n) ? 'team' : 'site'}/${n}.jpg`)}" loading="lazy"`);
   return html;
@@ -72,7 +73,7 @@ const ICONS = {
 };
 const RAIL = [['sustainability', 'Sustain&shy;ability'], ['products', 'Products &amp; Services'], ['resources', 'Insights &amp; Resources'], ['company', 'Company']];
 const CHEV = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>';
-const MARK = (cls = '') => `<span class="mark ${cls}">ec<svg class="egg" viewBox="0 0 20 26" aria-hidden="true"><use href="#egg"/></svg>shell<sup>™</sup></span>`;
+const MARK = (cls = '') => `<img class="mark ${cls}" src="img/logo/${cls === 'mark--light' ? 'ecoshell-logo-white' : 'ecoshell-logo'}.png" alt="Ecoshell" width="442" height="125">`;
 const lnk = (x, cls = '') => `<a${cls ? ` class="${cls}"` : ''} data-go="${x[1]}"${x[2] ? ` data-anchor="${x[2]}"` : ''}>${x[0]}</a>`;
 
 function panes() {
