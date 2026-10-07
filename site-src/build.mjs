@@ -120,6 +120,9 @@ function shell(cur, body, {shellId = ''} = {}) {
 <aside class="lrail" aria-label="Main menu"><div class="lrail__in">
 <a class="rbtn" data-go="home"${cur === 'home' ? ' aria-current="page"' : ''}>${ic(ICONS.home)}<span>Home</span></a>
 ${RAIL.map(([k, label]) => `<button type="button" class="rbtn" data-panel="${k}" aria-expanded="false"${sec === k ? ' aria-current="page"' : ''}>${ic(ICONS[k])}<span>${label}</span></button>`).join('\n')}
+<div class="lrail__sep" role="presentation"></div>
+<a class="rbtn" data-go="contact"${sec === 'contact' ? ' aria-current="page"' : ''}>${ic(ICONS.contact)}<span>Contact Us</span></a>
+<a class="rbtn" data-go="portal"${sec === 'portal' ? ' aria-current="page"' : ''}>${ic(ICONS.portal)}<span>Portal</span></a>
 <div class="panel" id="panel" hidden><div class="panel__head">${MARK('mark--ghost')}<button type="button" class="panel__x" id="panelX" aria-label="Close menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5l14 14M19 5 5 19"/></svg></button></div><div class="panel__body">${panes()}</div></div>
 </div></aside>
 <div class="main">
@@ -128,10 +131,6 @@ ${RAIL.map(([k, label]) => `<button type="button" class="rbtn" data-panel="${k}"
 <main id="content">${body}</main>
 ${FOOTER}
 </div>
-<aside class="rrail" aria-label="Quick links"><div class="rrail__in">
-<a class="qbtn" data-go="contact"${sec === 'contact' ? ' aria-current="page"' : ''}>${ic(ICONS.contact)}<span>Contact Us</span></a>
-<a class="qbtn" data-go="portal"${sec === 'portal' ? ' aria-current="page"' : ''}>${ic(ICONS.portal)}<span>Portal</span></a>
-</div></aside>
 </div></div>`;
 }
 
