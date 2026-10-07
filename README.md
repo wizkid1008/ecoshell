@@ -226,6 +226,21 @@ The portal pages include demo fallback data (a full opportunity with a
 sample, pilot, company and client) so the prototype can be explored before
 the Cloudflare/Supabase environment variables are connected.
 
+## Public site pages (generated)
+
+The public pages (home, sustainability, `products/`, `company/`, contact, resources and the
+portal sign-in view) are generated from `site-src/`:
+
+- `site-src/content.js` — page content, one render function per page
+- `site-src/menu.js` — the slide-out menu groups (left rail and phone menu)
+- `site-src/site.css` — stylesheet source; built into `assets/css/site.css` with every selector scoped under `.es`
+- `site-src/portal-dashboard.html` — the portal dashboard markup, copied unchanged into `portal.html`
+
+After editing anything in `site-src/`, run `node site-src/build.mjs` and commit the regenerated
+HTML/CSS. `site-src/` is excluded from the deployed assets by `.assetsignore`.
+`assets/js/site.js` handles the menus, home banner and enquiry forms (which still post to
+`/api/enquiries`). `solutions.html`, `insights.html` and `about.html` now forward to their new pages.
+
 ## Deployment
 
 Hosted on a Cloudflare Worker with static assets, connected to this GitHub

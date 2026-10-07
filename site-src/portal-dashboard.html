@@ -1,0 +1,70 @@
+<style>.portal:has(> #dashboardSection[hidden]){min-height:0}</style>
+<main class="portal portal--client">
+  
+
+  <section class="app-shell" id="dashboardSection" hidden>
+    <aside class="app-sidebar">
+      <a href="index.html" class="app-sidebar__brand"><span class="mark mark--light">ec<svg class="egg" viewBox="0 0 24 30" aria-hidden="true"><g fill="#7FC492"><use href="#eggIcon"/></g></svg>shell<span class="tm">™</span></span></a>
+      <nav class="app-nav" id="appNav" role="tablist" aria-label="Portal views"></nav>
+      <div class="app-sidebar__user">
+        <div class="app-avatar" id="userAvatar">?</div>
+        <div class="app-sidebar__user-info">
+          <b id="userEmail"></b>
+          <span id="userRole"></span>
+        </div>
+        <button class="app-sidebar__signout" type="button" id="signOutButton" aria-label="Sign out">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        </button>
+      </div>
+    </aside>
+    <div class="app-content">
+      <div class="app-content__inner">
+        <h1 id="dashboardHeading"></h1>
+        <div class="portal-kpis" id="dashboardKpis"></div>
+        <div class="portal-list" id="dashboardList"></div>
+
+        <form class="account-form portal-card" id="accountForm" hidden>
+          <h2>Account</h2>
+          <div class="frow">
+            <div class="field"><label for="acctName">Full name</label><input id="acctName" name="name" type="text" autocomplete="name"></div>
+            <div class="field"><label for="acctEmail">Email</label><input id="acctEmail" type="email" disabled></div>
+          </div>
+          <div class="frow" id="acctClientRow1">
+            <div class="field"><label for="acctCompanyName">Company name</label><input id="acctCompanyName" name="company_name" type="text" autocomplete="organization"></div>
+            <div class="field"><label for="acctJobTitle">Job title</label><input id="acctJobTitle" name="job_title" type="text" autocomplete="organization-title"></div>
+          </div>
+          <div class="frow">
+            <div class="field"><label for="acctPhone">Phone</label><input id="acctPhone" name="phone" type="tel" autocomplete="tel"></div>
+            <div class="field">
+              <label for="acctCountry">Country</label>
+              <select id="acctCountry" name="country" autocomplete="country-name">
+                <option value="">Select a country</option>
+              </select>
+            </div>
+          </div>
+          <div class="frow" id="acctClientRow2">
+            <div class="field">
+              <label for="acctIndustry">Industry</label>
+              <select id="acctIndustry" name="industry">
+                <option value="">Select an industry</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="acctArchetype">Archetype</label>
+              <select id="acctArchetype" name="archetype">
+                <option value="">Select an archetype</option>
+              </select>
+            </div>
+          </div>
+          <div class="frow" id="acctClientRow3">
+            <div class="field"><label for="acctLinkedin">LinkedIn profile</label><input id="acctLinkedin" name="linkedin_url" type="url" placeholder="https://linkedin.com/in/..." autocomplete="url"></div>
+          </div>
+          <button class="btn btn--solid" type="submit">Save changes</button>
+          <p class="portal-status" id="accountStatus" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="modalRoot"></div>
