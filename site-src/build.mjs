@@ -143,7 +143,7 @@ function head(cur, extraCss = '') {
   const f = FILE[cur];
   const title = cur === 'home' ? 'Ecoshell | Eggshell-derived materials for plastic reduction' : `${P[cur].t} | Ecoshell`;
   const desc = DESCRIPTIONS[cur] || `${P[cur].t}: Ecoshell eggshell-derived materials for plastic reduction.`;
-  const fav = (n) => asset(f, 'assets/img/favicon/' + n);
+  const fav = (n) => asset(f, 'assets/img/favicon/' + n) + '?v=2';
   return `<!doctype html>
 <html lang="en">
 <head>
