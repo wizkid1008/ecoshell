@@ -55,6 +55,8 @@ function rewrite(html, cur) {
     return `<a${clean} href="${h}">`;
   });
   html = html.replace(/src="img\/logo\/([\w-]+\.png)"/g, (m, n) => `src="${asset(curFile, `assets/img/logo/${n}`)}"`);
+  html = html.replace(/src="video\/([\w-]+\.mp4)"/g, (m, n) => `src="${asset(curFile, `assets/video/${n}`)}"`);
+  html = html.replace(/poster="img\/([\w-]+)\.jpg"/g, (m, n) => `poster="${asset(curFile, `assets/img/site/${n}.jpg`)}"`);
   html = html.replace(/src="img\/([\w-]+)\.jpg"/g, (m, n) =>
     `src="${asset(curFile, `assets/img/${TEAM.has(n) ? 'team' : 'site'}/${n}.jpg`)}" loading="lazy"`);
   return html;

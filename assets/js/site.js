@@ -64,7 +64,11 @@
     var current = 0, timer;
     var show = function(i){
       current = i;
-      slides.forEach(function(s, k){ s.hidden = k !== i; });
+      slides.forEach(function(s, k){
+        s.hidden = k !== i;
+        var v = s.querySelector('video');
+        if(v){ if(k === i){ var p = v.play(); if(p) p.catch(function(){}); } else v.pause(); }
+      });
       dots.forEach(function(d, k){ d.setAttribute('aria-current', k === i ? 'true' : 'false'); });
     };
     var start = function(){
@@ -74,6 +78,7 @@
       }
     };
     dots.forEach(function(d){ d.addEventListener('click', function(){ show(+d.dataset.dot); start(); }); });
+    show(0);
     start();
   }
 
