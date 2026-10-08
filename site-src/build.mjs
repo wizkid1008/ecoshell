@@ -167,8 +167,8 @@ ${extraCss}<link rel="stylesheet" href="${asset(f, 'assets/css/site.css')}">
 function portalBody() {
   const orig = readFileSync(join(SRC, 'portal-dashboard.html'), 'utf8');
   const auth = `<section class="portal-auth" id="authSection"><div class="wrap">
-<div><span class="eyebrow">Client portal</span><h1 style="font-size:clamp(34px,4cqi,50px);color:var(--deep);margin-top:12px">Your projects with Ecoshell, in one place</h1><p style="color:var(--muted);margin-top:16px;max-width:46ch">Track samples, pilots and test results, download documents and message our team.</p>
-<form class="form" id="loginForm" style="margin-top:28px"><h3>Sign in</h3>
+<div><h1 class="visually-hidden">Client portal</h1>
+<form class="form" id="loginForm"><h3>Sign in</h3>
 <label for="loginEmail">Work email<input id="loginEmail" name="loginEmail" type="email" autocomplete="email" placeholder="name@company.com" required></label>
 <label for="loginPassword">Password<input id="loginPassword" name="loginPassword" type="password" autocomplete="current-password" placeholder="At least 8 characters" minlength="8" required></label>
 <div><button class="btn btn--primary" type="submit">Sign in</button></div>

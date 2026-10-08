@@ -182,7 +182,7 @@ P.company={t:'Company',url:'company',sec:'company',r:function(){
 }};
 P.team={t:'Team',url:'company/team',sec:'company',parent:'company',r:function(){
   var h=hero({crumbs:[['Home','home'],['Company','company'],['Team']],eyebrow:'Team',title:'The people behind Ecoshell',sub:'A small team combining materials, operations and commercial experience.',img:'process'});
-  h+='<section class="sec"><div class="wrap grid g3" style="gap:32px">'+[['andrew-bliss','Andrew Bliss','Founder & CEO'],['kyle-newell','Kyle Newell','Chief Commercial Officer'],['doug-hardesty','Doug Hardesty','Chief Operations Officer']].map(function(x){return '<div class="person"><img src="img/'+x[0]+'.jpg" alt="'+x[1]+'"><span class="role">'+x[2]+'</span><h3>'+x[1]+'</h3><p>'+PH('Two-line bio')+'</p><div style="display:flex;gap:16px"><a class="arrow">LinkedIn</a><a class="arrow">Email</a></div></div>'}).join('')+'</div></section>';
+  h+='<section class="sec"><div class="wrap grid g3" style="gap:32px">'+[['andrew-bliss','Andrew Bliss','Founder & CEO'],['kyle-newell','Kyle Newell','Chief Commercial Officer'],['doug-hardesty','Doug Hardesty','Chief Operations Officer']].map(function(x){return '<div class="person"><img src="img/'+x[0]+'.jpg" alt="'+x[1]+'"><span class="role">'+x[2]+'</span><h3>'+x[1]+'</h3><p>'+PH('Two-line bio')+'</p><div style="display:flex;gap:16px"><a class="arrow">LinkedIn</a></div></div>'}).join('')+'</div></section>';
   return h;
 }};
 P.collab={t:'Collaboration',url:'company/collaboration',sec:'company',parent:'company',r:function(){
