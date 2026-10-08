@@ -35,7 +35,7 @@ const asset = (from, path) => posix.relative(posix.dirname(from), path);
 const TEAM = new Set(['andrew-bliss', 'kyle-newell', 'doug-hardesty']);
 function rewrite(html, cur) {
   const curFile = FILE[cur];
-  const hasInquiry = html.includes('id="inquiry"');
+  const hasInquiry = html.includes('data-enquiry');
   html = html.replace(/<(a|span|button)\b([^>]*)>/g, (m, tag, attrs) => {
     const go = /data-go="([^"]+)"/.exec(attrs)?.[1];
     const anchor = /data-anchor="([^"]+)"/.exec(attrs)?.[1];
