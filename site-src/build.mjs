@@ -35,7 +35,7 @@ const asset = (from, path) => posix.relative(posix.dirname(from), path);
 const TEAM = new Set(['andrew-bliss', 'kyle-newell', 'doug-hardesty']);
 function rewrite(html, cur) {
   const curFile = FILE[cur];
-  const hasInquiry = html.includes('id="inquiry"');
+  const hasInquiry = html.includes('data-enquiry');
   html = html.replace(/<(a|span|button)\b([^>]*)>/g, (m, tag, attrs) => {
     const go = /data-go="([^"]+)"/.exec(attrs)?.[1];
     const anchor = /data-anchor="([^"]+)"/.exec(attrs)?.[1];
@@ -143,7 +143,7 @@ function head(cur, extraCss = '') {
   const f = FILE[cur];
   const title = cur === 'home' ? 'Ecoshell | Eggshell-derived materials for plastic reduction' : `${P[cur].t} | Ecoshell`;
   const desc = DESCRIPTIONS[cur] || `${P[cur].t}: Ecoshell eggshell-derived materials for plastic reduction.`;
-  const fav = (n) => asset(f, 'assets/img/favicon/' + n);
+  const fav = (n) => asset(f, 'assets/img/favicon/' + n) + '?v=2';
   return `<!doctype html>
 <html lang="en">
 <head>
